@@ -9,10 +9,10 @@ There's a devil statue in each Devil Room. Now, sometimes it'll turn into a Sata
 
 Satan has been nerfed a bit here. The Leeches and The Fallen won't show up. The foot stomps will only show up once you reach the Womb.
 
-You can control how often Satan shows up with Mod Config Menu.
+If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. By default, they'll drop key pieces like normal.
 
-If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. They'll drop key pieces like normal.</description>
-    <version>1.2</version>
+Mod Config Menu can be used to control how often Satan shows up and what the fallen angels drop.</description>
+    <version>1.3</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Bosses"/>

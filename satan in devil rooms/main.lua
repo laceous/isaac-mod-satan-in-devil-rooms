@@ -205,7 +205,7 @@ function mod:onNpcDeath(entityNpc)
     local hasKey = mod:hasBothKeyPieces()
     local position = room:FindFreePickupSpawnPosition(entityNpc.Position, 0, false, false)
     
-    if mod.state.fallenAngelDropType == 'items only' then
+    if mod.state.fallenAngelDropType == 'items only' or mod:hasFiligreeFeather() then
       -- null will use the item pool of the current room
       Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, CollectibleType.COLLECTIBLE_NULL, position, Vector(0,0), nil)
     elseif mod.state.fallenAngelDropType == 'keys then items' then
@@ -308,6 +308,17 @@ function mod:hasBothKeyPieces()
   end
   
   return hasKeyPiece1 and hasKeyPiece2
+end
+
+function mod:hasFiligreeFeather()
+  for i = 0, game:GetNumPlayers() - 1 do
+    local player = game:GetPlayer(i)
+    if player:HasTrinket(TrinketType.TRINKET_FILIGREE_FEATHERS, false) then
+      return true
+    end
+  end
+  
+  return false
 end
 
 -- vanilla: boss music plays, gets cut off for satan boss music, ending music doesn't play
