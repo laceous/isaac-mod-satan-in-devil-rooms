@@ -16,10 +16,12 @@ mod.difficulty = {
   [Difficulty.DIFFICULTY_GREED] = 'greed',
   [Difficulty.DIFFICULTY_GREEDIER] = 'greedier'
 }
+mod.dropTypes = { 'keys only', 'keys then items', 'items only' }
 
 mod.state = {}
 mod.state.stageSeed = nil
 mod.state.devilRooms = {}
+mod.state.fallenAngelDropType = 'keys only'
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
 function mod:onGameStart(isContinue)
@@ -49,6 +51,9 @@ function mod:loadState(isContinue)
         if state.stageSeed == stageSeed then
           mod.state.devilRooms = state.devilRooms
         end
+      end
+      if type(state.fallenAngelDropType) == 'string' and mod:getDropTypesIndex(state.fallenAngelDropType) >= 1 then
+        mod.state.fallenAngelDropType = state.fallenAngelDropType
       end
       if type(state.probabilitySatan) == 'table' then
         for _, difficulty in ipairs({ 'normal', 'hard', 'greed', 'greedier' }) do
@@ -125,25 +130,9 @@ function mod:onNewRoom()
       Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector(0,0), nil)
       mod.isSatanFight = true
       room:SetClear(false)
-      
-      local hud = game:GetHUD()
-      local player1 = game:GetPlayer(0)
-      local player2 = player1:GetOtherTwin()
-      local playerName = player1:GetName()
-      if player2 and playerName == 'Jacob' and player2:GetName() == 'Esau' then
-        playerName = 'Jacob+Esau'
-      end
-      hud:ShowItemText(playerName .. ' vs Satan', nil, false)
+      mod:showSatanFightText()
     else
-      -- there's a grid entity that accompanies the statue effect
-      for _, statue in ipairs(statues) do
-        local gridIndex = room:GetGridIndex(statue.Position)
-        local gridEntity = room:GetGridEntity(gridIndex)
-        if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
-          gridEntity:SetVariant(1) -- angel room variant that can spawn uriel/gabriel, this can cause an angel statue effect to be shown
-        end
-      end
-      
+      mod:updateGridStatues(statues)
       mod:setDevilRoomAllowed(roomDesc, false)
     end
   end
@@ -195,15 +184,8 @@ function mod:onNpcInit(entityNpc)
         entityNpc:Remove()
         
         if entityNpc.Type == EntityType.ENTITY_FALLEN and entityNpc.Variant == normalVariant then
+          mod:removeGridStatue()
           mod:playStartingSatanMusic()
-          
-          -- room:RemoveGridEntity doesn't save state on its own so we update the grid entity to a destroyed rock which does save state
-          local gridEntity = room:GetGridEntity(mod.gridIndex52)
-          if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
-            gridEntity:SetType(GridEntityType.GRID_ROCK)
-            gridEntity:SetVariant(0)
-            gridEntity.State = 2 -- destroyed/rubble
-          end
         end
       end
     else -- not satan fight
@@ -219,10 +201,20 @@ function mod:onNpcDeath(entityNpc)
   local room = game:GetRoom()
   
   if room:GetType() == RoomType.ROOM_DEVIL then
-    local key = entityNpc.Type == EntityType.ENTITY_URIEL and CollectibleType.COLLECTIBLE_KEY_PIECE_1 or CollectibleType.COLLECTIBLE_KEY_PIECE_2
+    local keyPiece = entityNpc.Type == EntityType.ENTITY_URIEL and CollectibleType.COLLECTIBLE_KEY_PIECE_1 or CollectibleType.COLLECTIBLE_KEY_PIECE_2
+    local hasKey = mod:hasBothKeyPieces()
+    local position = room:FindFreePickupSpawnPosition(entityNpc.Position, 0, false, false)
     
-    if not mod:hasBothKeyPieces() then
-      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, key, entityNpc.Position, Vector(0,0), nil)
+    if mod.state.fallenAngelDropType == 'items only' then
+      -- null will use the item pool of the current room
+      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, CollectibleType.COLLECTIBLE_NULL, position, Vector(0,0), nil)
+    elseif mod.state.fallenAngelDropType == 'keys then items' then
+      local collectible = hasKey and CollectibleType.COLLECTIBLE_NULL or keyPiece
+      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector(0,0), nil)
+    else -- keys only
+      if not hasKey then
+        Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, keyPiece, position, Vector(0,0), nil)
+      end
     end
     
     mod:playEndingMusic()
@@ -250,6 +242,43 @@ function mod:modifySatanFight(entityType, entityVariant)
   end
   
   return false
+end
+
+function mod:showSatanFightText()
+  local hud = game:GetHUD()
+  local player1 = game:GetPlayer(0)
+  local player2 = player1:GetOtherTwin()
+  local playerName = player1:GetName()
+  
+  if player2 and playerName == 'Jacob' and player2:GetName() == 'Esau' then
+    playerName = 'Jacob+Esau'
+  end
+  
+  hud:ShowItemText(playerName .. ' vs Satan', nil, false)
+end
+
+function mod:updateGridStatues(statues)
+  local room = game:GetRoom()
+  
+  -- there's a grid entity that accompanies the statue effect
+  for _, statue in ipairs(statues) do
+    local gridEntity = room:GetGridEntityFromPos(statue.Position)
+    if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
+      gridEntity:SetVariant(1) -- angel room variant that can spawn uriel/gabriel, this can cause an angel statue effect to be shown
+    end
+  end
+end
+
+function mod:removeGridStatue()
+  local room = game:GetRoom()
+  
+  -- room:RemoveGridEntity doesn't save state on its own so we update the grid entity to a destroyed rock which does save state
+  local gridEntity = room:GetGridEntity(mod.gridIndex52)
+  if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
+    gridEntity:SetType(GridEntityType.GRID_ROCK)
+    gridEntity:SetVariant(0)
+    gridEntity.State = 2 -- destroyed/rubble
+  end
 end
 
 function mod:setPrices()
@@ -380,6 +409,15 @@ function mod:clearDevilRooms()
   end
 end
 
+function mod:getDropTypesIndex(name)
+  for i, value in ipairs(mod.dropTypes) do
+    if name == value then
+      return i
+    end
+  end
+  return -1
+end
+
 function mod:seedRng()
   repeat
     local rand = Random()  -- 0 to 2^32
@@ -400,13 +438,13 @@ end
 
 -- start ModConfigMenu --
 function mod:setupModConfigMenu()
-  ModConfigMenu.AddText(mod.Name, nil, 'What\'s the probability of Satan')
-  ModConfigMenu.AddText(mod.Name, nil, 'showing up in a Devil Room?')
-  ModConfigMenu.AddSpace(mod.Name, nil)
+  ModConfigMenu.AddText(mod.Name, 'Satan', 'What\'s the probability of Satan')
+  ModConfigMenu.AddText(mod.Name, 'Satan', 'showing up in a Devil Room?')
+  ModConfigMenu.AddSpace(mod.Name, 'Satan')
   for _, difficulty in ipairs({ 'normal', 'hard', 'greed', 'greedier' }) do
     ModConfigMenu.AddSetting(
       mod.Name,
-      nil,
+      'Satan',
       {
         Type = ModConfigMenu.OptionType.NUMBER,
         CurrentSetting = function()
@@ -424,6 +462,25 @@ function mod:setupModConfigMenu()
       }
     )
   end
+  ModConfigMenu.AddSetting(
+    mod.Name,
+    'Angels',
+    {
+      Type = ModConfigMenu.OptionType.NUMBER,
+      CurrentSetting = function()
+        return mod:getDropTypesIndex(mod.state.fallenAngelDropType)
+      end,
+      Minimum = 1,
+      Maximum = #mod.dropTypes,
+      Display = function()
+        return 'Drop type: ' .. mod.state.fallenAngelDropType
+      end,
+      OnChange = function(n)
+        mod.state.fallenAngelDropType = mod.dropTypes[n]
+      end,
+      Info = { 'Should fallen angels drop items', 'in addition to key pieces?' }
+    }
+  )
 end
 -- end ModConfigMenu --
 
