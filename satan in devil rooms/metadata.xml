@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+    <name>Satan in Devil Rooms (+Fallen Angels)</name>
+    <directory>satan in devil rooms</directory>
+    <id>2732699827</id>
+    <description>This mod was inspired by [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2497020375]Devil Statues Plus[/url] and [url=https://steamcommunity.com/sharedfiles/filedetails/?id=1190390846]Bombable Devil Statue[/url].
+
+There's a devil statue in each Devil Room. Now, sometimes it'll turn into a Satan fight. Once you defeat Satan, each Devil Deal item will cost a single point of damage rather than one or more heart containers.
+
+Satan has been nerfed a bit here. The Leeches and The Fallen won't show up. The foot stomps will only show up once you reach the Womb.
+
+You can control how often Satan shows up with Mod Config Menu.
+
+If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. They'll drop key pieces like normal.</description>
+    <version>1.1</version>
+    <visibility>Public</visibility>
+    <tag id="Lua"/>
+    <tag id="Bosses"/>
+    <tag id="Tweaks"/>
+</metadata>
