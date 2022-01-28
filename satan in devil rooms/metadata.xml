@@ -7,12 +7,18 @@
 
 There's a devil statue in each Devil Room. Now, sometimes it'll turn into a Satan fight. Once you defeat Satan, each Devil Deal item will cost a single point of damage rather than one or more heart containers.
 
-Satan has been nerfed a bit here. The Leeches and The Fallen won't show up. The foot stomps will only show up once you reach the Womb.
+Satan has been nerfed here a bit. The Leeches and The Fallen won't show up.
+[list]
+    [*]Basement: HP nerfed to 150. Foot stomps won't show up.
+    [*]Caves: HP nerfed to 300. Foot stomps won't show up.
+    [*]Depths: HP nerfed to 450. Foot stomps won't show up.
+    [*]Womb and beyond: HP at normal 600. Foot stomps will show up.
+[/list]
 
 If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. By default, they'll drop key pieces like normal.
 
 Mod Config Menu can be used to control how often Satan shows up and what the fallen angels drop.</description>
-    <version>1.3</version>
+    <version>1.4</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Bosses"/>

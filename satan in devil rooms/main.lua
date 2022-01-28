@@ -175,22 +175,53 @@ end
 -- filtered to ENTITY_URIEL / ENTITY_GABRIEL / ENTITY_LEECH / ENTITY_FALLEN / ENTITY_SATAN
 -- removing entities from here (rather than onUpdate) means that the player won't collide with the enemy and take damage
 function mod:onNpcInit(entityNpc)
-  local room = game:GetRoom()
+  local isGreedMode = game:IsGreedMode()
+  local level = game:GetLevel()
+  local room = level:GetCurrentRoom()
+  local stage = level:GetStage()
   local normalVariant = 0 -- 1 is krampus
+  local stompVariant = 10 -- 0 is normal
   
   if room:GetType() == RoomType.ROOM_DEVIL then
     if mod.isSatanFight then
-      if mod:modifySatanFight(entityNpc.Type, entityNpc.Variant) then
+      if entityNpc.Type == EntityType.ENTITY_LEECH then -- filter out leech
         entityNpc:Remove()
-        
-        if entityNpc.Type == EntityType.ENTITY_FALLEN and entityNpc.Variant == normalVariant then
-          mod:removeGridStatue()
-          mod:playStartingSatanMusic()
+      elseif entityNpc.Type == EntityType.ENTITY_FALLEN and entityNpc.Variant == normalVariant then -- filter out fallen
+        entityNpc:Remove()
+        mod:removeGridStatue()
+        mod:playStartingSatanMusic()
+      elseif entityNpc.Type == EntityType.ENTITY_SATAN and entityNpc.Variant == stompVariant then
+        if (isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1) then -- filter out foot stomps before the womb
+          entityNpc:Remove()
         end
       end
     else -- not satan fight
       if entityNpc.Type == EntityType.ENTITY_URIEL or entityNpc.Type == EntityType.ENTITY_GABRIEL then
         mod:playStartingAngelMusic()
+      end
+    end
+  end
+end
+
+-- filtered to ENTITY_SATAN
+-- this is in update rather than init because Satan's HP is set to 0 initially
+function mod:onNpcUpdate(entityNpc)
+  local isGreedMode = game:IsGreedMode()
+  local level = game:GetLevel()
+  local room = level:GetCurrentRoom()
+  local stage = level:GetStage()
+  
+  if mod.isSatanFight and room:GetType() == RoomType.ROOM_DEVIL then
+    if entityNpc.HitPoints == 600 and entityNpc.MaxHitPoints == 600 then
+      if (isGreedMode and stage < LevelStage.STAGE2_GREED) or (not isGreedMode and stage < LevelStage.STAGE2_1) then
+        entityNpc.HitPoints = 150
+        entityNpc.MaxHitPoints = 150
+      elseif (isGreedMode and stage < LevelStage.STAGE3_GREED) or (not isGreedMode and stage < LevelStage.STAGE3_1) then
+        entityNpc.HitPoints = 300
+        entityNpc.MaxHitPoints = 300
+      elseif (isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1) then
+        entityNpc.HitPoints = 450
+        entityNpc.MaxHitPoints = 450
       end
     end
   end
@@ -219,29 +250,6 @@ function mod:onNpcDeath(entityNpc)
     
     mod:playEndingMusic()
   end
-end
-
-function mod:modifySatanFight(entityType, entityVariant)
-  local level = game:GetLevel()
-  local room = level:GetCurrentRoom()
-  local normalVariant = 0 -- 1 is krampus
-  local stompVariant = 10 -- 0 is normal
-  
-  if mod.isSatanFight and room:GetType() == RoomType.ROOM_DEVIL then
-    -- filter out leech and fallen
-    if entityType == EntityType.ENTITY_LEECH or (entityType == EntityType.ENTITY_FALLEN and entityVariant == normalVariant) then
-      return true
-    elseif entityType == EntityType.ENTITY_SATAN and entityVariant == stompVariant then
-      local isGreedMode = game:IsGreedMode()
-      local stage = level:GetStage()
-      -- stage 4 is the womb, filter out foot stomps before that
-      if (isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1) then
-        return true
-      end
-    end
-  end
-  
-  return false
 end
 
 function mod:showSatanFightText()
@@ -506,6 +514,7 @@ mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_LEECH)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_FALLEN)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_SATAN)
+mod:AddCallback(ModCallbacks.MC_NPC_UPDATE, mod.onNpcUpdate, EntityType.ENTITY_SATAN)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_DEATH, mod.onNpcDeath, EntityType.ENTITY_URIEL)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_DEATH, mod.onNpcDeath, EntityType.ENTITY_GABRIEL)
 
