@@ -19,8 +19,8 @@ mod.difficulty = {
 mod.dropTypes = { 'keys only', 'keys then items', 'items only' }
 
 mod.state = {}
-mod.state.stageSeed = nil
-mod.state.devilRooms = {}
+mod.state.stageSeeds = {} -- per stage/type
+mod.state.devilRooms = {} -- per stage/type
 mod.state.fallenAngelDropType = 'keys only'
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
@@ -33,7 +33,8 @@ function mod:loadState(isContinue)
   local level = game:GetLevel()
   local seeds = game:GetSeeds()
   local stageSeed = seeds:GetStageSeed(level:GetStage())
-  mod.state.stageSeed = stageSeed
+  mod:setStageSeed(stageSeed)
+  mod:clearDevilRooms(false)
   
   local devilRooms
   if mod.stateLoadedEarly then
@@ -46,10 +47,32 @@ function mod:loadState(isContinue)
     local _, state = pcall(json.decode, mod:LoadData())
     
     if type(state) == 'table' then
-      if math.type(state.stageSeed) == 'integer' and type(state.devilRooms) == 'table' then
+      if isContinue and type(state.stageSeeds) == 'table' then
         -- quick check to see if this is the same run being continued
-        if state.stageSeed == stageSeed then
-          mod.state.devilRooms = state.devilRooms
+        if state.stageSeeds[mod:getStageIndex()] == stageSeed then
+          for key, value in pairs(state.stageSeeds) do
+            if type(key) == 'string' and math.type(value) == 'integer' then
+              mod.state.stageSeeds[key] = value
+            end
+          end
+          if type(state.devilRooms) == 'table' then
+            for key, value in pairs(state.devilRooms) do
+              if type(key) == 'string' and type(value) == 'table' then
+                mod.state.devilRooms[key] = {}
+                for k, v in pairs(value) do
+                  if type(k) == 'string' and type(v) == 'table' then
+                    mod.state.devilRooms[key][k] = {}
+                    if type(v['allowed']) == 'boolean' then
+                      mod.state.devilRooms[key][k]['allowed'] = v['allowed']
+                    end
+                    if type(v['completed']) == 'boolean' then
+                      mod.state.devilRooms[key][k]['completed'] = v['completed']
+                    end
+                  end
+                end
+              end
+            end
+          end
         end
       end
       if type(state.fallenAngelDropType) == 'string' and mod:getDropTypesIndex(state.fallenAngelDropType) >= 1 then
@@ -62,10 +85,6 @@ function mod:loadState(isContinue)
           end
         end
       end
-    end
-    
-    if not isContinue then
-      mod:clearDevilRooms()
     end
   end
   
@@ -80,14 +99,16 @@ function mod:onGameExit()
   mod:SaveData(json.encode(mod.state))
   mod.stateLoaded = false
   mod.stateLoadedEarly = false
+  mod:clearStageSeeds()
+  mod:clearDevilRooms(true)
 end
 
 function mod:onNewLevel()
   local level = game:GetLevel()
   local seeds = game:GetSeeds()
   local stageSeed = seeds:GetStageSeed(level:GetStage())
-  mod.state.stageSeed = stageSeed
-  mod:clearDevilRooms()
+  mod:setStageSeed(stageSeed)
+  mod:clearDevilRooms(false)
 end
 
 function mod:onNewRoom()
@@ -371,39 +392,47 @@ function mod:playEndingMusic()
 end
 
 function mod:setDevilRoomAllowed(roomDesc, override)
-  local listIdx = tostring(roomDesc.ListIndex)
+  local stageIndex = mod:getStageIndex()
+  if type(mod.state.devilRooms[stageIndex]) ~= 'table' then
+    mod.state.devilRooms[stageIndex] = {}
+  end
   
-  if type(mod.state.devilRooms[listIdx]) ~= 'table' then
-    mod.state.devilRooms[listIdx] = {}
+  local listIdx = tostring(roomDesc.ListIndex)
+  if type(mod.state.devilRooms[stageIndex][listIdx]) ~= 'table' then
+    mod.state.devilRooms[stageIndex][listIdx] = {}
   end
   
   if type(override) == 'boolean' then
-    mod.state.devilRooms[listIdx]['allowed'] = override
-  elseif type(mod.state.devilRooms[listIdx]['allowed']) ~= 'boolean' then
-    mod.state.devilRooms[listIdx]['allowed'] = mod.rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
+    mod.state.devilRooms[stageIndex][listIdx]['allowed'] = override
+  elseif type(mod.state.devilRooms[stageIndex][listIdx]['allowed']) ~= 'boolean' then
+    mod.state.devilRooms[stageIndex][listIdx]['allowed'] = mod.rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
   end
   
-  if type(mod.state.devilRooms[listIdx]['completed']) ~= 'boolean' then
-    mod.state.devilRooms[listIdx]['completed'] = false
+  if type(mod.state.devilRooms[stageIndex][listIdx]['completed']) ~= 'boolean' then
+    mod.state.devilRooms[stageIndex][listIdx]['completed'] = false
   end
 end
 
 function mod:setDevilRoomCompleted(roomDesc)
+  local stageIndex = mod:getStageIndex()
   local listIdx = tostring(roomDesc.ListIndex)
   
-  if type(mod.state.devilRooms[listIdx]) ~= 'table' then
+  if type(mod.state.devilRooms[stageIndex]) ~= 'table' or type(mod.state.devilRooms[stageIndex][listIdx]) ~= 'table' then
     mod:setDevilRoomAllowed(roomDesc)
   end
   
-  mod.state.devilRooms[listIdx]['completed'] = true
+  mod.state.devilRooms[stageIndex][listIdx]['completed'] = true
 end
 
 function mod:isDevilRoomAllowed(roomDesc)
+  local stageIndex = mod:getStageIndex()
   local listIdx = tostring(roomDesc.ListIndex)
   
-  if type(mod.state.devilRooms[listIdx]) == 'table' then
-    if type(mod.state.devilRooms[listIdx]['allowed']) == 'boolean' then
-      return mod.state.devilRooms[listIdx]['allowed']
+  if type(mod.state.devilRooms[stageIndex]) == 'table' then
+    if type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
+      if type(mod.state.devilRooms[stageIndex][listIdx]['allowed']) == 'boolean' then
+        return mod.state.devilRooms[stageIndex][listIdx]['allowed']
+      end
     end
   end
   
@@ -411,20 +440,46 @@ function mod:isDevilRoomAllowed(roomDesc)
 end
 
 function mod:isDevilRoomCompleted(roomDesc)
+  local stageIndex = mod:getStageIndex()
   local listIdx = tostring(roomDesc.ListIndex)
   
-  if type(mod.state.devilRooms[listIdx]) == 'table' then
-    if type(mod.state.devilRooms[listIdx]['completed']) == 'boolean' then
-      return mod.state.devilRooms[listIdx]['completed']
+  if type(mod.state.devilRooms[stageIndex]) == 'table' then
+    if type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
+      if type(mod.state.devilRooms[stageIndex][listIdx]['completed']) == 'boolean' then
+        return mod.state.devilRooms[stageIndex][listIdx]['completed']
+      end
     end
   end
   
   return false
 end
 
-function mod:clearDevilRooms()
-  for key, _ in pairs(mod.state.devilRooms) do
-    mod.state.devilRooms[key] = nil
+function mod:clearDevilRooms(clearAll)
+  if clearAll then
+    for key, _ in pairs(mod.state.devilRooms) do
+      mod.state.devilRooms[key] = nil
+    end
+  else
+    mod.state.devilRooms[mod:getStageIndex()] = nil
+  end
+end
+
+function mod:getStageIndex()
+  local level = game:GetLevel()
+  return level:GetStage() .. '-' .. level:GetStageType() .. '-' .. (level:IsAltStage() and 1 or 0) .. '-' .. (level:IsPreAscent() and 1 or 0) .. '-' .. (level:IsAscent() and 1 or 0)
+end
+
+function mod:getStageSeed()
+  return mod.state.stageSeeds[mod:getStageIndex()]
+end
+
+function mod:setStageSeed(seed)
+  mod.state.stageSeeds[mod:getStageIndex()] = seed
+end
+
+function mod:clearStageSeeds()
+  for key, _ in pairs(mod.state.stageSeeds) do
+    mod.state.stageSeeds[key] = nil
   end
 end
 
