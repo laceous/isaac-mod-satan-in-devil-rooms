@@ -4,8 +4,7 @@ local game = Game()
 local music = MusicManager()
 
 mod.isSatanFight = false
-mod.stateLoaded = false
-mod.stateLoadedEarly = false
+mod.onGameStartHasRun = false
 mod.gridIndex22 = 22
 mod.gridIndex52 = 52
 mod.rng = RNG()
@@ -25,23 +24,12 @@ mod.state.fallenAngelDropType = 'keys only'
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
 function mod:onGameStart(isContinue)
-  mod:loadState(isContinue)
-  mod.stateLoaded = true
-end
-
-function mod:loadState(isContinue)
   local level = game:GetLevel()
   local seeds = game:GetSeeds()
   local stageSeed = seeds:GetStageSeed(level:GetStage())
   mod:setStageSeed(stageSeed)
   mod:clearDevilRooms(false)
-  
-  local devilRooms
-  if mod.stateLoadedEarly then
-    devilRooms = mod:copyTable(mod.state.devilRooms)
-  else
-    mod:seedRng()
-  end
+  mod:seedRng()
   
   if mod:HasData() then
     local _, state = pcall(json.decode, mod:LoadData())
@@ -88,17 +76,14 @@ function mod:loadState(isContinue)
     end
   end
   
-  if mod.stateLoadedEarly then
-    for k, v in pairs(devilRooms) do
-      mod.state.devilRooms[k] = v
-    end
-  end
+  mod.onGameStartHasRun = true
+  mod:onNewRoom()
 end
 
 function mod:onGameExit()
   mod:SaveData(json.encode(mod.state))
-  mod.stateLoaded = false
-  mod.stateLoadedEarly = false
+  mod.isSatanFight = false
+  mod.onGameStartHasRun = false
   mod:clearStageSeeds()
   mod:clearDevilRooms(true)
 end
@@ -112,6 +97,10 @@ function mod:onNewLevel()
 end
 
 function mod:onNewRoom()
+  if not mod.onGameStartHasRun then
+    return
+  end
+  
   local level = game:GetLevel()
   local room = level:GetCurrentRoom()
   local roomDesc = level:GetCurrentRoomDesc()
@@ -119,13 +108,6 @@ function mod:onNewRoom()
   mod.isSatanFight = false
   
   if room:GetType() == RoomType.ROOM_DEVIL then
-    -- onNewRoom runs before onGameStart
-    -- if we don't spawn Satan from here then the doors don't lock properly when continuing
-    if not mod.stateLoaded then
-      mod:loadState(false)
-      mod.stateLoadedEarly = true
-    end
-    
     mod:setDevilRoomAllowed(roomDesc)
     
     local statues = {}
@@ -149,6 +131,7 @@ function mod:onNewRoom()
       -- devil statue should be at GridIndex(52)
       -- satan needs to go to GridIndex(22) because its base position is 2 spaces higher (52 - 15 - 15 = 22)
       Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector(0,0), nil)
+      mod:closeDoors() -- needed if this is triggered from onGameStart
       mod.isSatanFight = true
       room:SetClear(false)
       mod:showSatanFightText()
@@ -284,6 +267,17 @@ function mod:showSatanFightText()
   end
   
   hud:ShowItemText(playerName .. ' vs Satan', nil, false)
+end
+
+function mod:closeDoors()
+  local room = game:GetRoom()
+  
+  for i = 0, DoorSlot.NUM_DOOR_SLOTS - 1 do
+    local door = room:GetDoor(i)
+    if door and door:IsOpen() then
+      door:Close(true)
+    end
+  end
 end
 
 function mod:updateGridStatues(statues)
@@ -499,15 +493,6 @@ function mod:seedRng()
       mod.rng:SetSeed(rand, 1)
     end
   until(rand > 0)
-end
-
--- shallow copy
-function mod:copyTable(tbl)
-  local copy = {}
-  for k, v in pairs(tbl) do
-    copy[k] = v
-  end
-  return copy
 end
 
 -- start ModConfigMenu --
