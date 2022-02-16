@@ -80,12 +80,19 @@ function mod:onGameStart(isContinue)
   mod:onNewRoom()
 end
 
-function mod:onGameExit()
-  mod:SaveData(json.encode(mod.state))
+function mod:onGameExit(shouldSave)
+  if shouldSave then
+    mod:SaveData(json.encode(mod.state))
+    mod:clearStageSeeds()
+    mod:clearDevilRooms(true)
+  else
+    mod:clearStageSeeds()
+    mod:clearDevilRooms(true)
+    mod:SaveData(json.encode(mod.state))
+  end
+  
   mod.isSatanFight = false
   mod.onGameStartHasRun = false
-  mod:clearStageSeeds()
-  mod:clearDevilRooms(true)
 end
 
 function mod:onNewLevel()
@@ -460,7 +467,7 @@ end
 
 function mod:getStageIndex()
   local level = game:GetLevel()
-  return level:GetStage() .. '-' .. level:GetStageType() .. '-' .. (level:IsAltStage() and 1 or 0) .. '-' .. (level:IsPreAscent() and 1 or 0) .. '-' .. (level:IsAscent() and 1 or 0)
+  return game:GetVictoryLap() .. '-' .. level:GetStage() .. '-' .. level:GetStageType() .. '-' .. (level:IsAltStage() and 1 or 0) .. '-' .. (level:IsPreAscent() and 1 or 0) .. '-' .. (level:IsAscent() and 1 or 0)
 end
 
 function mod:getStageSeed()
