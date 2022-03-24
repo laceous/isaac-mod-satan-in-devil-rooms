@@ -468,7 +468,17 @@ end
 
 function mod:getStageIndex()
   local level = game:GetLevel()
-  return game:GetVictoryLap() .. '-' .. level:GetStage() .. '-' .. level:GetStageType() .. '-' .. (level:IsAltStage() and 1 or 0) .. '-' .. (level:IsPreAscent() and 1 or 0) .. '-' .. (level:IsAscent() and 1 or 0)
+  local stage = level:GetStage()
+  local stageType = level:GetStageType()
+  local isAltStage = level:IsAltStage()
+  
+  -- home switches these midway through, keep it consistent
+  if stage == LevelStage.STAGE8 then
+    stageType = StageType.STAGETYPE_ORIGINAL -- normal: STAGETYPE_ORIGINAL -> STAGETYPE_WOTL
+    isAltStage = false                       -- normal: false -> true
+  end
+  
+  return game:GetVictoryLap() .. '-' .. stage .. '-' .. stageType .. '-' .. (isAltStage and 1 or 0) .. '-' .. (level:IsPreAscent() and 1 or 0) .. '-' .. (level:IsAscent() and 1 or 0)
 end
 
 function mod:setStageSeed(seed)
