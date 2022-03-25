@@ -17,8 +17,12 @@ Satan has been nerfed here a bit. The Leeches and The Fallen won't show up.
 
 If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. By default, they'll drop key pieces like normal.
 
-Mod Config Menu can be used to control how often Satan shows up and what the fallen angels drop.</description>
-    <version>1.9</version>
+Mod Config Menu can be used to control how often Satan shows up and what the fallen angels drop. You can also make the fallen angels a bit easier by nerfing their HP to that of their non-fallen variants.
+[list]
+    [*]Uriel: 450 -&gt; 400
+    [*]Gabriel: 750 -&gt; 660
+[/list]</description>
+    <version>1.10</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Bosses"/>

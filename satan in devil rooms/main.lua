@@ -21,6 +21,7 @@ mod.state = {}
 mod.state.stageSeeds = {} -- per stage
 mod.state.devilRooms = {} -- per stage/type
 mod.state.fallenAngelDropType = 'keys only'
+mod.state.easierFallenAngels = false
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
 function mod:onGameStart(isContinue)
@@ -66,6 +67,9 @@ function mod:onGameStart(isContinue)
       end
       if type(state.fallenAngelDropType) == 'string' and mod:getDropTypesIndex(state.fallenAngelDropType) >= 1 then
         mod.state.fallenAngelDropType = state.fallenAngelDropType
+      end
+      if type(state.easierFallenAngels) == 'boolean' then
+        mod.state.easierFallenAngels = state.easierFallenAngels
       end
       if type(state.probabilitySatan) == 'table' then
         for _, difficulty in ipairs({ 'normal', 'hard', 'greed', 'greedier' }) do
@@ -208,7 +212,17 @@ function mod:onNpcInit(entityNpc)
         end
       end
     else -- not satan fight
-      if entityNpc.Type == EntityType.ENTITY_URIEL or entityNpc.Type == EntityType.ENTITY_GABRIEL then
+      if entityNpc.Type == EntityType.ENTITY_URIEL then
+        if mod.state.easierFallenAngels and entityNpc.HitPoints == 450 and entityNpc.MaxHitPoints == 450 then
+          entityNpc.HitPoints = 400
+          entityNpc.MaxHitPoints = 400
+        end
+        mod:playStartingAngelMusic()
+      elseif entityNpc.Type == EntityType.ENTITY_GABRIEL then
+        if mod.state.easierFallenAngels and entityNpc.HitPoints == 750 and entityNpc.MaxHitPoints == 750 then
+          entityNpc.HitPoints = 660
+          entityNpc.MaxHitPoints = 660
+        end
         mod:playStartingAngelMusic()
       end
     end
@@ -553,6 +567,23 @@ function mod:setupModConfigMenu()
         mod.state.fallenAngelDropType = mod.dropTypes[n]
       end,
       Info = { 'Should fallen angels drop items', 'in addition to key pieces?' }
+    }
+  )
+  ModConfigMenu.AddSetting(
+    mod.Name,
+    'Angels',
+    {
+      Type = ModConfigMenu.OptionType.BOOLEAN,
+      CurrentSetting = function()
+        return mod.state.easierFallenAngels
+      end,
+      Display = function()
+        return 'Difficulty: ' .. (mod.state.easierFallenAngels and 'easier' or 'default')
+      end,
+      OnChange = function(b)
+        mod.state.easierFallenAngels = b
+      end,
+      Info = { 'Default: Uriel has 450 HP, Gabriel has 750 HP', 'Easier: Uriel has 400 HP, Gabriel has 660 HP' }
     }
   )
 end
