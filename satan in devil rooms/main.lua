@@ -327,13 +327,11 @@ function mod:removeGridStatue()
 end
 
 function mod:setPrices()
-  for _, entity in ipairs(Isaac.GetRoomEntities()) do
-    if entity.Type == EntityType.ENTITY_PICKUP and entity.Variant == PickupVariant.PICKUP_COLLECTIBLE then
-      local pickup = entity:ToPickup()
-      if pickup.Price ~= 0 and pickup.Price ~= PickupPrice.PRICE_FREE and pickup.Price ~= PickupPrice.PRICE_SPIKES then
-        pickup.Price = PickupPrice.PRICE_SPIKES
-        pickup.AutoUpdatePrice = false
-      end
+  for _, entity in ipairs(Isaac.FindByType(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, -1, false, false)) do
+    local pickup = entity:ToPickup()
+    if pickup.Price ~= 0 and pickup.Price ~= PickupPrice.PRICE_FREE and pickup.Price ~= PickupPrice.PRICE_SPIKES then
+      pickup.Price = PickupPrice.PRICE_SPIKES
+      pickup.AutoUpdatePrice = false
     end
   end
 end
