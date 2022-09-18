@@ -524,6 +524,9 @@ end
 
 -- start ModConfigMenu --
 function mod:setupModConfigMenu()
+  for _, v in ipairs({ 'Satan', 'Angels' }) do
+    ModConfigMenu.RemoveSubcategory(mod.Name, v)
+  end
   ModConfigMenu.AddText(mod.Name, 'Satan', 'What\'s the probability of Satan')
   ModConfigMenu.AddText(mod.Name, 'Satan', 'showing up in a Devil Room?')
   ModConfigMenu.AddSpace(mod.Name, 'Satan')
