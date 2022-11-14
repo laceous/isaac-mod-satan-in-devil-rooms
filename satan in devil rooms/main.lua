@@ -188,7 +188,7 @@ function mod:onPreEntitySpawn(entityType, variant, subType, position, velocity, 
   end
 end
 
--- filtered to ENTITY_URIEL / ENTITY_GABRIEL / ENTITY_LEECH / ENTITY_FALLEN / ENTITY_SATAN
+-- filtered to ENTITY_URIEL / ENTITY_GABRIEL / ENTITY_LEECH / ENTITY_NULLS / ENTITY_FALLEN / ENTITY_SATAN
 -- removing entities from here (rather than onUpdate) means that the player won't collide with the enemy and take damage
 function mod:onNpcInit(entityNpc)
   local isGreedMode = game:IsGreedMode()
@@ -200,7 +200,7 @@ function mod:onNpcInit(entityNpc)
   
   if room:GetType() == RoomType.ROOM_DEVIL then
     if mod.isSatanFight then
-      if entityNpc.Type == EntityType.ENTITY_LEECH then -- filter out leech
+      if entityNpc.Type == EntityType.ENTITY_LEECH or entityNpc.Type == EntityType.ENTITY_NULLS then -- filter out leech/nulls
         entityNpc:Remove()
       elseif entityNpc.Type == EntityType.ENTITY_FALLEN and entityNpc.Variant == normalVariant then -- filter out fallen
         entityNpc:Remove()
@@ -599,6 +599,7 @@ mod:AddCallback(ModCallbacks.MC_PRE_ENTITY_SPAWN, mod.onPreEntitySpawn)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_URIEL)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_GABRIEL)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_LEECH)
+mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_NULLS)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_FALLEN)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_SATAN)
 mod:AddCallback(ModCallbacks.MC_NPC_UPDATE, mod.onNpcUpdate, EntityType.ENTITY_SATAN)
