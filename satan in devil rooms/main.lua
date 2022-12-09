@@ -7,7 +7,7 @@ mod.isSatanFight = false
 mod.onGameStartHasRun = false
 mod.gridIndex22 = 22
 mod.gridIndex52 = 52
-mod.rng = RNG()
+mod.rngShiftIndex = 35
 
 mod.difficulty = {
   [Difficulty.DIFFICULTY_NORMAL] = 'normal',
@@ -31,7 +31,6 @@ function mod:onGameStart(isContinue)
   local stageSeed = seeds:GetStageSeed(stage)
   mod:setStageSeed(stageSeed)
   mod:clearDevilRooms(false)
-  mod:seedRng()
   
   if mod:HasData() then
     local _, state = pcall(json.decode, mod:LoadData())
@@ -143,10 +142,11 @@ function mod:onNewRoom()
       -- devil statue should be at GridIndex(52)
       -- satan needs to go to GridIndex(22) because its base position is 2 spaces higher (52 - 15 - 15 = 22)
       Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector(0,0), nil)
-      mod:closeDoors() -- needed if this is triggered from onGameStart
       mod.isSatanFight = true
-      room:SetClear(false)
+      mod:closeDoors() -- needed if this is triggered from onGameStart
+      mod:removePits() -- make room fair for satan fight
       mod:showSatanFightText()
+      room:SetClear(false)
     else
       mod:updateGridStatues(statues)
       mod:setDevilRoomAllowed(roomDesc, false)
@@ -302,6 +302,17 @@ function mod:closeDoors()
   end
 end
 
+function mod:removePits()
+  local room = game:GetRoom()
+  
+  for i = 16, 118 do -- 1x1 room
+    local gridEntity = room:GetGridEntity(i)
+    if gridEntity and gridEntity:GetType() == GridEntityType.GRID_PIT then
+      gridEntity:ToPit():MakeBridge(nil) -- room:RemoveGridEntity doesn't save when re-entering room
+    end
+  end
+end
+
 function mod:updateGridStatues(statues)
   local room = game:GetRoom()
   
@@ -419,7 +430,9 @@ function mod:setDevilRoomAllowed(roomDesc, override)
   if type(override) == 'boolean' then
     mod.state.devilRooms[stageIndex][listIdx]['allowed'] = override
   elseif type(mod.state.devilRooms[stageIndex][listIdx]['allowed']) ~= 'boolean' then
-    mod.state.devilRooms[stageIndex][listIdx]['allowed'] = mod.rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
+    local rng = RNG()
+    rng:SetSeed(roomDesc.SpawnSeed, mod.rngShiftIndex) -- AwardSeed, DecorationSeed
+    mod.state.devilRooms[stageIndex][listIdx]['allowed'] = rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
   end
   
   if type(mod.state.devilRooms[stageIndex][listIdx]['completed']) ~= 'boolean' then
@@ -511,15 +524,6 @@ function mod:getDropTypesIndex(name)
     end
   end
   return -1
-end
-
-function mod:seedRng()
-  repeat
-    local rand = Random()  -- 0 to 2^32
-    if rand > 0 then       -- if this is 0, it causes a crash later on
-      mod.rng:SetSeed(rand, 1)
-    end
-  until(rand > 0)
 end
 
 -- start ModConfigMenu --
