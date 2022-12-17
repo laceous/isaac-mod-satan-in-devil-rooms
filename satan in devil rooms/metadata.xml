@@ -24,12 +24,14 @@ Satan can only show up if:
 
 If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. By default, they'll drop key pieces like normal.
 
+Note: You'll need to have unlocked secret 155 &quot;The Angels Await!!!&quot; by completing chapter 6 (chest/dark room) before the fallen angels will spawn.
+
 Mod Config Menu can be used to control how often Satan shows up and what the fallen angels drop. You can also make the fallen angels a bit easier by nerfing their HP to that of their non-fallen variants.
 [list]
     [*]Uriel: 450 -&gt; 400
     [*]Gabriel: 750 -&gt; 660
 [/list]</description>
-    <version>1.14</version>
+    <version>1.15</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Bosses"/>
