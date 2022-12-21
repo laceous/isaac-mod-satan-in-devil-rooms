@@ -86,17 +86,37 @@ end
 
 function mod:onGameExit(shouldSave)
   if shouldSave then
-    mod:SaveData(json.encode(mod.state))
+    mod:save()
     mod:clearStageSeeds()
     mod:clearDevilRooms(true)
   else
     mod:clearStageSeeds()
     mod:clearDevilRooms(true)
-    mod:SaveData(json.encode(mod.state))
+    mod:save()
   end
   
   mod.isSatanFight = false
   mod.onGameStartHasRun = false
+end
+
+function mod:save(settingsOnly)
+  if settingsOnly then
+    local _, state
+    if mod:HasData() then
+      _, state = pcall(json.decode, mod:LoadData())
+    end
+    if type(state) ~= 'table' then
+      state = {}
+    end
+    
+    state.fallenAngelDropType = mod.state.fallenAngelDropType
+    state.easierFallenAngels = mod.state.easierFallenAngels
+    state.probabilitySatan = mod.state.probabilitySatan
+    
+    mod:SaveData(json.encode(state))
+  else
+    mod:SaveData(json.encode(mod.state))
+  end
 end
 
 function mod:onNewLevel()
@@ -550,6 +570,7 @@ function mod:setupModConfigMenu()
         end,
         OnChange = function(n)
           mod.state.probabilitySatan[difficulty] = n
+          mod:save(true)
         end,
         Info = { 'Satan will only show up if there\'s a valid', 'deal with the devil and no other enemies' }
       }
@@ -570,6 +591,7 @@ function mod:setupModConfigMenu()
       end,
       OnChange = function(n)
         mod.state.fallenAngelDropType = mod.dropTypes[n]
+        mod:save(true)
       end,
       Info = { 'Should fallen angels drop items', 'in addition to key pieces?' }
     }
@@ -587,6 +609,7 @@ function mod:setupModConfigMenu()
       end,
       OnChange = function(b)
         mod.state.easierFallenAngels = b
+        mod:save(true)
       end,
       Info = { 'Default: Uriel has 450 HP, Gabriel has 750 HP', 'Easier: Uriel has 400 HP, Gabriel has 660 HP' }
     }
