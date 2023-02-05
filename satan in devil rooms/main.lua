@@ -18,45 +18,31 @@ mod.difficulty = {
 mod.dropTypes = { 'keys only', 'keys then items', 'items only' }
 
 mod.state = {}
-mod.state.stageSeeds = {} -- per stage
 mod.state.devilRooms = {} -- per stage/type
 mod.state.fallenAngelDropType = 'keys only'
 mod.state.easierFallenAngels = false
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
 function mod:onGameStart(isContinue)
-  local level = game:GetLevel()
-  local stage = level:GetStage()
-  local seeds = game:GetSeeds()
-  local stageSeed = seeds:GetStageSeed(stage)
-  mod:setStageSeed(stageSeed)
   mod:clearDevilRooms(false)
   
   if mod:HasData() then
     local _, state = pcall(json.decode, mod:LoadData())
     
     if type(state) == 'table' then
-      if isContinue and type(state.stageSeeds) == 'table' then
-        -- quick check to see if this is the same run being continued
-        if state.stageSeeds[tostring(stage)] == stageSeed then
-          for key, value in pairs(state.stageSeeds) do
-            if type(key) == 'string' and math.type(value) == 'integer' then
-              mod.state.stageSeeds[key] = value
-            end
-          end
-          if type(state.devilRooms) == 'table' then
-            for key, value in pairs(state.devilRooms) do
-              if type(key) == 'string' and type(value) == 'table' then
-                mod.state.devilRooms[key] = {}
-                for k, v in pairs(value) do
-                  if type(k) == 'string' and type(v) == 'table' then
-                    mod.state.devilRooms[key][k] = {}
-                    if type(v['allowed']) == 'boolean' then
-                      mod.state.devilRooms[key][k]['allowed'] = v['allowed']
-                    end
-                    if type(v['completed']) == 'boolean' then
-                      mod.state.devilRooms[key][k]['completed'] = v['completed']
-                    end
+      if isContinue then
+        if type(state.devilRooms) == 'table' then
+          for key, value in pairs(state.devilRooms) do
+            if type(key) == 'string' and type(value) == 'table' then
+              mod.state.devilRooms[key] = {}
+              for k, v in pairs(value) do
+                if type(k) == 'string' and type(v) == 'table' then
+                  mod.state.devilRooms[key][k] = {}
+                  if type(v['allowed']) == 'boolean' then
+                    mod.state.devilRooms[key][k]['allowed'] = v['allowed']
+                  end
+                  if type(v['completed']) == 'boolean' then
+                    mod.state.devilRooms[key][k]['completed'] = v['completed']
                   end
                 end
               end
@@ -87,10 +73,8 @@ end
 function mod:onGameExit(shouldSave)
   if shouldSave then
     mod:save()
-    mod:clearStageSeeds()
     mod:clearDevilRooms(true)
   else
-    mod:clearStageSeeds()
     mod:clearDevilRooms(true)
     mod:save()
   end
@@ -120,10 +104,6 @@ function mod:save(settingsOnly)
 end
 
 function mod:onNewLevel()
-  local level = game:GetLevel()
-  local seeds = game:GetSeeds()
-  local stageSeed = seeds:GetStageSeed(level:GetStage())
-  mod:setStageSeed(stageSeed)
   mod:clearDevilRooms(false)
 end
 
@@ -524,17 +504,6 @@ function mod:getStageIndex()
   end
   
   return game:GetVictoryLap() .. '-' .. stage .. '-' .. stageType .. '-' .. (isAltStage and 1 or 0) .. '-' .. (level:IsPreAscent() and 1 or 0) .. '-' .. (level:IsAscent() and 1 or 0)
-end
-
-function mod:setStageSeed(seed)
-  local level = game:GetLevel()
-  mod.state.stageSeeds[tostring(level:GetStage())] = seed
-end
-
-function mod:clearStageSeeds()
-  for key, _ in pairs(mod.state.stageSeeds) do
-    mod.state.stageSeeds[key] = nil
-  end
 end
 
 function mod:getDropTypesIndex(name)
