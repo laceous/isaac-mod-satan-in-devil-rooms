@@ -292,8 +292,8 @@ function mod:showSatanFightText()
   local player2 = player1:GetOtherTwin()
   local playerName = player1:GetName()
   
-  if player2 and playerName == 'Jacob' and player2:GetName() == 'Esau' then
-    playerName = 'Jacob+Esau'
+  if player2 and player1:GetPlayerType() == PlayerType.PLAYER_JACOB and player2:GetPlayerType() == PlayerType.PLAYER_ESAU then
+    playerName = player1:GetName() .. '+' .. player2:GetName()
   end
   
   hud:ShowItemText(playerName .. ' vs Satan', nil, false)

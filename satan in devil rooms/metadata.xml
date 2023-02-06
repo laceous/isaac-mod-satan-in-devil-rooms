@@ -31,7 +31,7 @@ Mod Config Menu can be used to control how often Satan shows up, what the fallen
     [*]Uriel: 450 -&gt; 400
     [*]Gabriel: 750 -&gt; 660
 [/list]</description>
-    <version>1.18</version>
+    <version>1.19</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Bosses"/>
