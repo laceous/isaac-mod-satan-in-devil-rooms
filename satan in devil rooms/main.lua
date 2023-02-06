@@ -21,6 +21,7 @@ mod.state = {}
 mod.state.devilRooms = {} -- per stage/type
 mod.state.fallenAngelDropType = 'keys only'
 mod.state.easierFallenAngels = false
+mod.state.forceUrielFirst = false
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
 function mod:onGameStart(isContinue)
@@ -55,6 +56,9 @@ function mod:onGameStart(isContinue)
       end
       if type(state.easierFallenAngels) == 'boolean' then
         mod.state.easierFallenAngels = state.easierFallenAngels
+      end
+      if type(state.forceUrielFirst) == 'boolean' then
+        mod.state.forceUrielFirst = state.forceUrielFirst
       end
       if type(state.probabilitySatan) == 'table' then
         for _, difficulty in ipairs({ 'normal', 'hard', 'greed', 'greedier' }) do
@@ -95,6 +99,7 @@ function mod:save(settingsOnly)
     
     state.fallenAngelDropType = mod.state.fallenAngelDropType
     state.easierFallenAngels = mod.state.easierFallenAngels
+    state.forceUrielFirst = mod.state.forceUrielFirst
     state.probabilitySatan = mod.state.probabilitySatan
     
     mod:SaveData(json.encode(state))
@@ -181,6 +186,9 @@ function mod:onPreEntitySpawn(entityType, variant, subType, position, velocity, 
   
   if room:GetType() == RoomType.ROOM_DEVIL then
     if (entityType == EntityType.ENTITY_URIEL or entityType == EntityType.ENTITY_GABRIEL) then
+      if mod.state.forceUrielFirst and not mod:hasKeyPiece1() and not mod:hasKeyPiece2() and not mod:hasAngelsOrKeys() then
+        return { EntityType.ENTITY_URIEL, fallenVariant, subType, seed }
+      end
       return { entityType, fallenVariant, subType, seed } -- fallen uriel / fallen gabriel
     elseif entityType == EntityType.ENTITY_EFFECT and (variant == EffectVariant.DEVIL or variant == EffectVariant.ANGEL) then
       return { entityType, EffectVariant.DEVIL, subType, seed } -- the devil effect sometimes turns into an angel effect
@@ -347,21 +355,42 @@ function mod:setPrices()
   end
 end
 
-function mod:hasBothKeyPieces()
-  local hasKeyPiece1 = false
-  local hasKeyPiece2 = false
-  
-  for i = 0, game:GetNumPlayers() - 1 do
-    local player = game:GetPlayer(i)
-    if player:HasCollectible(CollectibleType.COLLECTIBLE_KEY_PIECE_1, false) then
-      hasKeyPiece1 = true
-    end
-    if player:HasCollectible(CollectibleType.COLLECTIBLE_KEY_PIECE_2, false) then
-      hasKeyPiece2 = true
+function mod:hasAngelsOrKeys()
+  for _, v in ipairs(Isaac.GetRoomEntities()) do
+    if v.Type == EntityType.ENTITY_URIEL or v.Type == EntityType.ENTITY_GABRIEL or
+       (v.Type == EntityType.ENTITY_PICKUP and v.Variant == PickupVariant.PICKUP_COLLECTIBLE and (v.SubType == CollectibleType.COLLECTIBLE_KEY_PIECE_1 or v.SubType == CollectibleType.COLLECTIBLE_KEY_PIECE_2))
+    then
+      return true
     end
   end
   
-  return hasKeyPiece1 and hasKeyPiece2
+  return false
+end
+
+function mod:hasKeyPiece1()
+  for i = 0, game:GetNumPlayers() - 1 do
+    local player = game:GetPlayer(i)
+    if player:HasCollectible(CollectibleType.COLLECTIBLE_KEY_PIECE_1, false) then
+      return true
+    end
+  end
+  
+  return false
+end
+
+function mod:hasKeyPiece2()
+  for i = 0, game:GetNumPlayers() - 1 do
+    local player = game:GetPlayer(i)
+    if player:HasCollectible(CollectibleType.COLLECTIBLE_KEY_PIECE_2, false) then
+      return true
+    end
+  end
+  
+  return false
+end
+
+function mod:hasBothKeyPieces()
+  return mod:hasKeyPiece1() and mod:hasKeyPiece2()
 end
 
 function mod:hasFiligreeFeather()
@@ -581,6 +610,24 @@ function mod:setupModConfigMenu()
         mod:save(true)
       end,
       Info = { 'Default: Uriel has 450 HP, Gabriel has 750 HP', 'Easier: Uriel has 400 HP, Gabriel has 660 HP' }
+    }
+  )
+  ModConfigMenu.AddSetting(
+    mod.Name,
+    'Angels',
+    {
+      Type = ModConfigMenu.OptionType.BOOLEAN,
+      CurrentSetting = function()
+        return mod.state.forceUrielFirst
+      end,
+      Display = function()
+        return 'Uriel first: ' .. (mod.state.forceUrielFirst and 'yes' or 'no')
+      end,
+      OnChange = function(b)
+        mod.state.forceUrielFirst = b
+        mod:save(true)
+      end,
+      Info = { 'Force Uriel to spawn before Gabriel?', 'No: fall back to the game\'s default behavior' }
     }
   )
 end
