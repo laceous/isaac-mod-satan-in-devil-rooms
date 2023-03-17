@@ -146,7 +146,7 @@ function mod:onNewRoom()
       
       -- devil statue should be at GridIndex(52)
       -- satan needs to go to GridIndex(22) because its base position is 2 spaces higher (52 - 15 - 15 = 22)
-      Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector(0,0), nil)
+      Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector.Zero, nil)
       mod.isSatanFight = true
       mod:closeDoors() -- needed if this is triggered from onGameStart
       mod:removePits() -- make room fair for satan fight
@@ -270,15 +270,22 @@ function mod:onNpcDeath(entityNpc)
     local hasKey = mod:hasBothKeyPieces()
     local position = room:FindFreePickupSpawnPosition(entityNpc.Position, 0, false, false)
     
+    -- safety check, sometimes the wrong angel spawns, angel rooms will still give you the other key to complete your set
+    if keyPiece == CollectibleType.COLLECTIBLE_KEY_PIECE_1 and mod:hasKeyPiece1() then
+      keyPiece = CollectibleType.COLLECTIBLE_KEY_PIECE_2
+    elseif keyPiece == CollectibleType.COLLECTIBLE_KEY_PIECE_2 and mod:hasKeyPiece2() then
+      keyPiece = CollectibleType.COLLECTIBLE_KEY_PIECE_1
+    end
+    
     if mod.state.fallenAngelDropType == 'items only' or mod:hasFiligreeFeather() then
       -- null will use the item pool of the current room
-      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, CollectibleType.COLLECTIBLE_NULL, position, Vector(0,0), nil)
+      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, CollectibleType.COLLECTIBLE_NULL, position, Vector.Zero, nil)
     elseif mod.state.fallenAngelDropType == 'keys then items' then
       local collectible = hasKey and CollectibleType.COLLECTIBLE_NULL or keyPiece
-      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector(0,0), nil)
+      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector.Zero, nil)
     else -- keys only
       if not hasKey then
-        Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, keyPiece, position, Vector(0,0), nil)
+        Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, keyPiece, position, Vector.Zero, nil)
       end
     end
     
