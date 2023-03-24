@@ -5,7 +5,11 @@
     <id>2732699827</id>
     <description>This mod was inspired by [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2497020375]Devil Statues Plus[/url] and [url=https://steamcommunity.com/sharedfiles/filedetails/?id=1190390846]Bombable Devil Statue[/url].
 
-There's a devil statue in each Devil Room. Now, sometimes it'll turn into a Satan fight. Once you defeat Satan, each Devil Deal item will cost a single point of damage rather than one or more heart containers.
+There's a devil statue in each Devil Room. Now, sometimes it'll turn into a Satan fight. Once you defeat Satan, each devil deal item will cost a single point of damage rather than one or more heart containers.
+
+Note: After you defeat Satan, The Lost will be able to take all items instead of being limited to just one.
+
+Note: Paying the spike price will lock in your devil deals. You can still get to Angel Rooms via: sacrifice rooms, confessionals, book of virtues, duality, eucharist, act of contrition, and holy cards (see below).
 
 Satan has been nerfed here a bit. The Leeches and The Fallen won't show up.
 [list]
@@ -22,18 +26,27 @@ Satan can only show up if:
     [*]there's at least one devil deal item for sale
 [/list]
 
+You can choose to spawn a Holy Card after defeating Satan. If you've defeated Satan at least once in a Devil Room then Holy Cards will additionally give a 10% Angel Room chance on the floor they're activated on. The percentage shown in the UI may vary due to the game's internal logic. After activation, it's likely that your Angel Room chance will be higher than your Devil Room chance.
+
+Note: You can't use the temporary Holy Mantle effect to pay the spike price.
+
+Note: If you don't like this addition to Holy Cards then leave the option turned off in MCM. It'll disable it completely.
+
 If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. By default, they'll drop key pieces like normal.
 
 Note: You'll need to have unlocked secret 155 &quot;The Angels Await!!!&quot; by completing chapter 6 (chest/dark room) before the fallen angels will spawn.
+
+Note: Taking the free key piece will not lock in your devil deals.
 
 Mod Config Menu can be used to control how often Satan shows up, what the fallen angels drop, and if Uriel should spawn first. You can also make the fallen angels a bit easier by nerfing their HP to that of their non-fallen variants.
 [list]
     [*]Uriel: 450 -&gt; 400
     [*]Gabriel: 750 -&gt; 660
 [/list]</description>
-    <version>1.20</version>
+    <version>1.21</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
+    <tag id="Rooms"/>
     <tag id="Bosses"/>
     <tag id="Tweaks"/>
 </metadata>

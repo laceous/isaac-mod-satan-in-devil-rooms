@@ -22,6 +22,7 @@ mod.state.devilRooms = {} -- per stage/type
 mod.state.fallenAngelDropType = 'keys only'
 mod.state.easierFallenAngels = false
 mod.state.forceUrielFirst = false
+mod.state.spawnHolyCard = false
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
 function mod:onGameStart(isContinue)
@@ -39,11 +40,11 @@ function mod:onGameStart(isContinue)
               for k, v in pairs(value) do
                 if type(k) == 'string' and type(v) == 'table' then
                   mod.state.devilRooms[key][k] = {}
-                  if type(v['allowed']) == 'boolean' then
-                    mod.state.devilRooms[key][k]['allowed'] = v['allowed']
+                  if type(v.allowed) == 'boolean' then
+                    mod.state.devilRooms[key][k].allowed = v.allowed
                   end
-                  if type(v['completed']) == 'boolean' then
-                    mod.state.devilRooms[key][k]['completed'] = v['completed']
+                  if type(v.completed) == 'boolean' then
+                    mod.state.devilRooms[key][k].completed = v.completed
                   end
                 end
               end
@@ -59,6 +60,9 @@ function mod:onGameStart(isContinue)
       end
       if type(state.forceUrielFirst) == 'boolean' then
         mod.state.forceUrielFirst = state.forceUrielFirst
+      end
+      if type(state.spawnHolyCard) == 'boolean' then
+        mod.state.spawnHolyCard = state.spawnHolyCard
       end
       if type(state.probabilitySatan) == 'table' then
         for _, difficulty in ipairs({ 'normal', 'hard', 'greed', 'greedier' }) do
@@ -100,6 +104,7 @@ function mod:save(settingsOnly)
     state.fallenAngelDropType = mod.state.fallenAngelDropType
     state.easierFallenAngels = mod.state.easierFallenAngels
     state.forceUrielFirst = mod.state.forceUrielFirst
+    state.spawnHolyCard = mod.state.spawnHolyCard
     state.probabilitySatan = mod.state.probabilitySatan
     
     mod:SaveData(json.encode(state))
@@ -177,6 +182,23 @@ function mod:onUpdate()
         mod:setPrices()
       end
     end
+  end
+end
+
+-- filtered to CARD_HOLY
+function mod:onUseCard(card, player, useFlags)
+  if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
+    local level = game:GetLevel()
+    level:AddAngelRoomChance(0.1) -- 10%
+  end
+end
+
+function mod:onPreSpawnAward(rng, pos)
+  local room = game:GetRoom()
+  
+  if room:GetType() == RoomType.ROOM_DEVIL and mod.isSatanFight and mod.state.spawnHolyCard then
+    mod:spawnHolyCard(pos)
+    return true -- cancel default spawn
   end
 end
 
@@ -352,6 +374,12 @@ function mod:removeGridStatue()
   end
 end
 
+function mod:spawnHolyCard(pos)
+  local entity = Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TAROTCARD, Card.CARD_HOLY, Isaac.GetFreeNearPosition(pos, 3), Vector.Zero, nil)
+  local data = entity:GetData()
+  data['EID_Description'] = '{{HolyMantle}} Grants a one-use Holy Mantle shield#{{AngelRoom}} Also grants a 10% Angel Room chance' -- temp override that only shows when this is spawned
+end
+
 function mod:setPrices()
   for _, entity in ipairs(Isaac.FindByType(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, -1, false, false)) do
     local pickup = entity:ToPickup()
@@ -463,16 +491,18 @@ function mod:setDevilRoomAllowed(roomDesc, override)
     mod.state.devilRooms[stageIndex][listIdx] = {}
   end
   
-  if type(override) == 'boolean' then
-    mod.state.devilRooms[stageIndex][listIdx]['allowed'] = override
-  elseif type(mod.state.devilRooms[stageIndex][listIdx]['allowed']) ~= 'boolean' then
-    local rng = RNG()
-    rng:SetSeed(roomDesc.SpawnSeed, mod.rngShiftIndex) -- AwardSeed, DecorationSeed
-    mod.state.devilRooms[stageIndex][listIdx]['allowed'] = rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
+  if type(mod.state.devilRooms[stageIndex][listIdx].allowed) ~= 'boolean' then
+    if type(override) == 'boolean' then
+      mod.state.devilRooms[stageIndex][listIdx].allowed = override
+    else
+      local rng = RNG()
+      rng:SetSeed(roomDesc.SpawnSeed, mod.rngShiftIndex) -- AwardSeed, DecorationSeed
+      mod.state.devilRooms[stageIndex][listIdx].allowed = rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
+    end
   end
   
-  if type(mod.state.devilRooms[stageIndex][listIdx]['completed']) ~= 'boolean' then
-    mod.state.devilRooms[stageIndex][listIdx]['completed'] = false
+  if type(mod.state.devilRooms[stageIndex][listIdx].completed) ~= 'boolean' then
+    mod.state.devilRooms[stageIndex][listIdx].completed = false
   end
 end
 
@@ -484,7 +514,7 @@ function mod:setDevilRoomCompleted(roomDesc)
     mod:setDevilRoomAllowed(roomDesc)
   end
   
-  mod.state.devilRooms[stageIndex][listIdx]['completed'] = true
+  mod.state.devilRooms[stageIndex][listIdx].completed = true
 end
 
 function mod:isDevilRoomAllowed(roomDesc)
@@ -493,8 +523,8 @@ function mod:isDevilRoomAllowed(roomDesc)
   
   if type(mod.state.devilRooms[stageIndex]) == 'table' then
     if type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
-      if type(mod.state.devilRooms[stageIndex][listIdx]['allowed']) == 'boolean' then
-        return mod.state.devilRooms[stageIndex][listIdx]['allowed']
+      if type(mod.state.devilRooms[stageIndex][listIdx].allowed) == 'boolean' then
+        return mod.state.devilRooms[stageIndex][listIdx].allowed
       end
     end
   end
@@ -508,8 +538,20 @@ function mod:isDevilRoomCompleted(roomDesc)
   
   if type(mod.state.devilRooms[stageIndex]) == 'table' then
     if type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
-      if type(mod.state.devilRooms[stageIndex][listIdx]['completed']) == 'boolean' then
-        return mod.state.devilRooms[stageIndex][listIdx]['completed']
+      if type(mod.state.devilRooms[stageIndex][listIdx].completed) == 'boolean' then
+        return mod.state.devilRooms[stageIndex][listIdx].completed
+      end
+    end
+  end
+  
+  return false
+end
+
+function mod:isAnyDevilRoomCompleted()
+  for _, v in pairs(mod.state.devilRooms) do
+    for _, w in pairs(v) do
+      if w.completed then
+        return true
       end
     end
   end
@@ -581,6 +623,25 @@ function mod:setupModConfigMenu()
       }
     )
   end
+  ModConfigMenu.AddSpace(mod.Name, 'Satan')
+  ModConfigMenu.AddSetting(
+    mod.Name,
+    'Satan',
+    {
+      Type = ModConfigMenu.OptionType.BOOLEAN,
+      CurrentSetting = function()
+        return mod.state.spawnHolyCard
+      end,
+      Display = function()
+        return (mod.state.spawnHolyCard and 'Spawn' or 'Do not spawn') .. ' holy card'
+      end,
+      OnChange = function(b)
+        mod.state.spawnHolyCard = b
+        mod:save(true)
+      end,
+      Info = { 'Spawn holy card after defeating Satan?', 'Upon activation, holy cards will', 'add a 10% angel room chance' }
+    }
+  )
   ModConfigMenu.AddSetting(
     mod.Name,
     'Angels',
@@ -645,6 +706,8 @@ mod:AddCallback(ModCallbacks.MC_PRE_GAME_EXIT, mod.onGameExit)
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.onNewLevel)
 mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.onNewRoom)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.onUpdate)
+mod:AddCallback(ModCallbacks.MC_USE_CARD, mod.onUseCard, Card.CARD_HOLY)
+mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, mod.onPreSpawnAward)
 mod:AddCallback(ModCallbacks.MC_PRE_ENTITY_SPAWN, mod.onPreEntitySpawn)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_URIEL)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_INIT, mod.onNpcInit, EntityType.ENTITY_GABRIEL)
