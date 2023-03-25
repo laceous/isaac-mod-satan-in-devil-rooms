@@ -74,6 +74,8 @@ function mod:onGameStart(isContinue)
     end
   end
   
+  mod:updateEid()
+  
   mod.onGameStartHasRun = true
   mod:onNewRoom()
 end
@@ -176,6 +178,7 @@ function mod:onUpdate()
         mod:setDevilRoomCompleted(roomDesc)
         mod:setPrices()
         mod:playEndingMusic()
+        mod:updateEid()
       end
     else -- not satan fight
       if mod:isDevilRoomCompleted(roomDesc) then
@@ -189,7 +192,13 @@ end
 function mod:onUseCard(card, player, useFlags)
   if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
     local level = game:GetLevel()
-    level:AddAngelRoomChance(0.1) -- 10%
+    local room = level:GetCurrentRoom()
+    
+    if room:GetType() == RoomType.ROOM_DEVIL then
+      player:AddItemWisp(CollectibleType.COLLECTIBLE_ACT_OF_CONTRITION, player.Position, true)
+    else
+      level:AddAngelRoomChance(0.1) -- 10%
+    end
   end
 end
 
@@ -375,9 +384,7 @@ function mod:removeGridStatue()
 end
 
 function mod:spawnHolyCard(pos)
-  local entity = Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TAROTCARD, Card.CARD_HOLY, Isaac.GetFreeNearPosition(pos, 3), Vector.Zero, nil)
-  local data = entity:GetData()
-  data['EID_Description'] = '{{HolyMantle}} Grants a one-use Holy Mantle shield#{{AngelRoom}} Also grants a 10% Angel Room chance' -- temp override that only shows when this is spawned
+  Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TAROTCARD, Card.CARD_HOLY, Isaac.GetFreeNearPosition(pos, 3), Vector.Zero, nil)
 end
 
 function mod:setPrices()
@@ -593,6 +600,19 @@ function mod:getDropTypesIndex(name)
   return -1
 end
 
+-- external item descriptions
+function mod:updateEid()
+  if EID then
+    local description = '{{HolyMantle}} Grants a one-use Holy Mantle shield'
+    
+    if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
+      description = description .. '#{{DevilRoom}} In Devil Rooms, spawns an Act of Contrition item wisp#{{AngelRoom}} Outside of Devil Rooms, grants a 10% Angel Room chance for the floor'
+    end
+    
+    EID:addCard(Card.CARD_HOLY, description, nil, nil) -- Holy Card, en_us
+  end
+end
+
 -- start ModConfigMenu --
 function mod:setupModConfigMenu()
   for _, v in ipairs({ 'Satan', 'Angels' }) do
@@ -637,9 +657,10 @@ function mod:setupModConfigMenu()
       end,
       OnChange = function(b)
         mod.state.spawnHolyCard = b
+        mod:updateEid()
         mod:save(true)
       end,
-      Info = { 'Spawn holy card after defeating Satan?', 'Upon activation, holy cards will', 'add a 10% angel room chance' }
+      Info = { 'Spawn holy card after defeating Satan?' }
     }
   )
   ModConfigMenu.AddSetting(

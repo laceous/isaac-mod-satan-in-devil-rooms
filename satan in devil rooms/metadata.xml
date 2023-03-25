@@ -26,7 +26,11 @@ Satan can only show up if:
     [*]there's at least one devil deal item for sale
 [/list]
 
-You can choose to spawn a Holy Card after defeating Satan. If you've defeated Satan at least once in a Devil Room then Holy Cards will additionally give a 10% Angel Room chance on the floor they're activated on. The percentage shown in the UI may vary due to the game's internal logic. After activation, it's likely that your Angel Room chance will be higher than your Devil Room chance.
+You can choose to spawn a Holy Card after defeating Satan. If you've defeated Satan at least once in a Devil Room then Holy Cards will grant an additional effect.
+[list]
+    [*]In Devil Rooms, Holy Cards will give you an Act of Contrition item wisp. Act of Contrition gives you a 50/50 chance to get an Angel Room after taking a devil deal. It also gives a tears up, and reduces the penalty for taking red heart damage. Wisps can be lost due to damage so you'll need to protect it.
+    [*]Outside of Devil Rooms, Holy Cards will give you a 10% Angel Room chance on the floor they're activated on. The percentage shown in the UI may vary due to the game's internal logic. In most cases, your Angel Room chance will be higher than your Devil Room chance.
+[/list]
 
 Note: You can't use the temporary Holy Mantle effect to pay the spike price.
 
@@ -43,7 +47,7 @@ Mod Config Menu can be used to control how often Satan shows up, what the fallen
     [*]Uriel: 450 -&gt; 400
     [*]Gabriel: 750 -&gt; 660
 [/list]</description>
-    <version>1.21</version>
+    <version>1.22</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Rooms"/>
