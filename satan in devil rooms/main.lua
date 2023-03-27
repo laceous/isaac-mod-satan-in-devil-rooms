@@ -148,11 +148,16 @@ function mod:onNewRoom()
     end
     
     -- don't spawn satan in small devil rooms
-    if room:GetRoomShape() == RoomShape.ROOMSHAPE_1x1 and #statues == 1 and room:GetGridIndex(statues[1].Position) == mod.gridIndex52 and room:IsClear() and mod:isDevilRoomAllowed(roomDesc) and
-       (#pickups > 0 or mod:isDevilRoomSpawned(roomDesc)) -- pickups could have been taken
+    if room:GetRoomShape() == RoomShape.ROOMSHAPE_1x1 and room:IsClear() and mod:isDevilRoomAllowed(roomDesc) and
+       (
+         (#pickups > 0 and #statues == 1 and room:GetGridIndex(statues[1].Position) == mod.gridIndex52) or
+         mod:isDevilRoomSpawned(roomDesc)
+       )
     then
       if mod:isDevilRoomCompleted(roomDesc) then
-        statues[1]:Remove() -- effect
+        if #statues == 1 then
+          statues[1]:Remove() -- effect
+        end
         mod:removeGridStatue()
         mod:removePits()
         mod:setPrices()
@@ -186,6 +191,7 @@ function mod:onUpdate()
       if room:IsClear() then
         mod.isSatanFight = false
         mod:setDevilRoomCompleted(roomDesc)
+        mod:addReplacementRock()
         mod:setPrices()
         mod:playEndingMusic()
         mod:updateEid()
@@ -385,6 +391,14 @@ function mod:removeGridStatue()
   if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
     room:RemoveGridEntity(mod.gridIndex52, 0, false)
   end
+end
+
+-- this blocks the statue from showing up again on continue
+function mod:addReplacementRock()
+  local room = game:GetRoom()
+  
+  local gridEntity = Isaac.GridSpawn(GridEntityType.GRID_ROCK, 0, room:GetGridPosition(mod.gridIndex52), true)
+  gridEntity.State = 2 -- destroyed/rubble
 end
 
 function mod:spawnHolyCard(pos)
