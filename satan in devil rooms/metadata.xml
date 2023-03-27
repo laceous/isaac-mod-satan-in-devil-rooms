@@ -29,7 +29,7 @@ Satan can only show up if:
 You can choose to spawn a Holy Card after defeating Satan. If you've defeated Satan at least once in a Devil Room then Holy Cards will grant an additional effect.
 [list]
     [*]In Devil Rooms, Holy Cards will give you an Act of Contrition item wisp. Act of Contrition gives you a 50/50 chance to get an Angel Room after taking a devil deal. It also gives a tears up, and reduces the penalty for taking red heart damage. Wisps can be lost due to damage so you'll need to protect it.
-    [*]Outside of Devil Rooms, Holy Cards will give you a 10% Angel Room chance on the floor they're activated on. The percentage shown in the UI may vary due to the game's internal logic. In most cases, your Angel Room chance will be higher than your Devil Room chance.
+    [*]Outside of Devil Rooms, Holy Cards will give you a 10% Angel Room chance on the floor they're activated on. This means: if the angel/devil chance was 50/50 then the card will give you 55/45 odds in favor of Angel Rooms. It'll also give you 55/45 odds if the odds had been 0/100. It makes it 50/50 and then gives you the 10 point increase.
 [/list]
 
 Note: You can't use the temporary Holy Mantle effect to pay the spike price.
@@ -40,14 +40,16 @@ If Satan doesn't show up then you can bomb the devil statue to fight the fallen 
 
 Note: You'll need to have unlocked secret 155 &quot;The Angels Await!!!&quot; by completing chapter 6 (chest/dark room) before the fallen angels will spawn.
 
-Note: Taking the free key piece will not lock in your devil deals.
+Note: Taking the free key pieces will not lock in your devil deals.
 
-Mod Config Menu can be used to control how often Satan shows up, what the fallen angels drop, and if Uriel should spawn first. You can also make the fallen angels a bit easier by nerfing their HP to that of their non-fallen variants.
+Mod Config Menu can be used to control how often Satan shows up and what the fallen angels drop. You can also make the fallen angels a bit easier by nerfing their HP to that of their non-fallen variants.
 [list]
     [*]Uriel: 450 -&gt; 400
     [*]Gabriel: 750 -&gt; 660
-[/list]</description>
-    <version>1.22</version>
+[/list]
+
+The Uriel first option was removed. To make this behave consistently between Angel and Devil Rooms, I'd recommend grabbing the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2927760501]Uriel before Gabriel[/url] mod.</description>
+    <version>1.23</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Rooms"/>

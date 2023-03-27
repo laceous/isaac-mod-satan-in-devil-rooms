@@ -21,7 +21,6 @@ mod.state = {}
 mod.state.devilRooms = {} -- per stage/type
 mod.state.fallenAngelDropType = 'keys only'
 mod.state.easierFallenAngels = false
-mod.state.forceUrielFirst = false
 mod.state.spawnHolyCard = false
 mod.state.probabilitySatan = { normal = 3, hard = 20, greed = 0, greedier = 0 }
 
@@ -43,6 +42,9 @@ function mod:onGameStart(isContinue)
                   if type(v.allowed) == 'boolean' then
                     mod.state.devilRooms[key][k].allowed = v.allowed
                   end
+                  if type(v.spawned) == 'boolean' then
+                    mod.state.devilRooms[key][k].spawned = v.spawned
+                  end
                   if type(v.completed) == 'boolean' then
                     mod.state.devilRooms[key][k].completed = v.completed
                   end
@@ -57,9 +59,6 @@ function mod:onGameStart(isContinue)
       end
       if type(state.easierFallenAngels) == 'boolean' then
         mod.state.easierFallenAngels = state.easierFallenAngels
-      end
-      if type(state.forceUrielFirst) == 'boolean' then
-        mod.state.forceUrielFirst = state.forceUrielFirst
       end
       if type(state.spawnHolyCard) == 'boolean' then
         mod.state.spawnHolyCard = state.spawnHolyCard
@@ -105,7 +104,6 @@ function mod:save(settingsOnly)
     
     state.fallenAngelDropType = mod.state.fallenAngelDropType
     state.easierFallenAngels = mod.state.easierFallenAngels
-    state.forceUrielFirst = mod.state.forceUrielFirst
     state.spawnHolyCard = mod.state.spawnHolyCard
     state.probabilitySatan = mod.state.probabilitySatan
     
@@ -131,7 +129,9 @@ function mod:onNewRoom()
   mod.isSatanFight = false
   
   if room:GetType() == RoomType.ROOM_DEVIL then
-    mod:setDevilRoomAllowed(roomDesc)
+    if room:IsFirstVisit() then
+      mod:setDevilRoomAllowed(roomDesc)
+    end
     
     local statues = {}
     local pickups = {}
@@ -148,17 +148,27 @@ function mod:onNewRoom()
     end
     
     -- don't spawn satan in small devil rooms
-    if room:GetRoomShape() == RoomShape.ROOMSHAPE_1x1 and #statues == 1 and room:GetGridIndex(statues[1].Position) == mod.gridIndex52 and #pickups > 0 and room:IsClear() and mod:isDevilRoomAllowed(roomDesc) then
-      statues[1]:Remove() -- effect
-      
-      -- devil statue should be at GridIndex(52)
-      -- satan needs to go to GridIndex(22) because its base position is 2 spaces higher (52 - 15 - 15 = 22)
-      Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector.Zero, nil)
-      mod.isSatanFight = true
-      mod:closeDoors() -- needed if this is triggered from onGameStart
-      mod:removePits() -- make room fair for satan fight
-      mod:showSatanFightText()
-      room:SetClear(false)
+    if room:GetRoomShape() == RoomShape.ROOMSHAPE_1x1 and #statues == 1 and room:GetGridIndex(statues[1].Position) == mod.gridIndex52 and room:IsClear() and mod:isDevilRoomAllowed(roomDesc) and
+       (#pickups > 0 or mod:isDevilRoomSpawned(roomDesc)) -- pickups could have been taken
+    then
+      if mod:isDevilRoomCompleted(roomDesc) then
+        statues[1]:Remove() -- effect
+        mod:removeGridStatue()
+        mod:removePits()
+        mod:setPrices()
+      else
+        mod:setDevilRoomSpawned(roomDesc)
+        statues[1]:Remove()
+        
+        -- devil statue should be at GridIndex(52)
+        -- satan needs to go to GridIndex(22) because its base position is 2 spaces higher (52 - 15 - 15 = 22)
+        Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector.Zero, nil)
+        mod.isSatanFight = true
+        mod:closeDoors() -- needed if this is triggered from onGameStart
+        mod:removePits() -- make room fair for satan fight
+        mod:showSatanFightText()
+        room:SetClear(false)
+      end
     else
       mod:updateGridStatues(statues)
       mod:setDevilRoomAllowed(roomDesc, false)
@@ -182,7 +192,7 @@ function mod:onUpdate()
       end
     else -- not satan fight
       if mod:isDevilRoomCompleted(roomDesc) then
-        mod:setPrices()
+        mod:setPrices() -- this could be moved to MC_POST_PICKUP_UPDATE, but the behavior doesn't seem to be any different
       end
     end
   end
@@ -217,9 +227,6 @@ function mod:onPreEntitySpawn(entityType, variant, subType, position, velocity, 
   
   if room:GetType() == RoomType.ROOM_DEVIL then
     if (entityType == EntityType.ENTITY_URIEL or entityType == EntityType.ENTITY_GABRIEL) then
-      if mod.state.forceUrielFirst and not mod:hasKeyPiece1() and not mod:hasKeyPiece2() and not mod:hasAngelsOrKeys() then
-        return { EntityType.ENTITY_URIEL, fallenVariant, subType, seed }
-      end
       return { entityType, fallenVariant, subType, seed } -- fallen uriel / fallen gabriel
     elseif entityType == EntityType.ENTITY_EFFECT and (variant == EffectVariant.DEVIL or variant == EffectVariant.ANGEL) then
       return { entityType, EffectVariant.DEVIL, subType, seed } -- the devil effect sometimes turns into an angel effect
@@ -301,7 +308,7 @@ function mod:onNpcDeath(entityNpc)
     local hasKey = mod:hasBothKeyPieces()
     local position = room:FindFreePickupSpawnPosition(entityNpc.Position, 0, false, false)
     
-    -- safety check, sometimes the wrong angel spawns, angel rooms will still give you the other key to complete your set
+    -- safety check, sometimes the wrong angel spawns, angel rooms will still give you the other key piece to complete your set
     if keyPiece == CollectibleType.COLLECTIBLE_KEY_PIECE_1 and mod:hasKeyPiece1() then
       keyPiece = CollectibleType.COLLECTIBLE_KEY_PIECE_2
     elseif keyPiece == CollectibleType.COLLECTIBLE_KEY_PIECE_2 and mod:hasKeyPiece2() then
@@ -351,7 +358,7 @@ end
 function mod:removePits()
   local room = game:GetRoom()
   
-  for i = 16, 118 do -- 1x1 room
+  for i = 0, room:GetGridSize() - 1 do
     local gridEntity = room:GetGridEntity(i)
     if gridEntity and gridEntity:GetType() == GridEntityType.GRID_PIT then
       gridEntity:ToPit():MakeBridge(nil) -- room:RemoveGridEntity doesn't save when re-entering room
@@ -374,12 +381,9 @@ end
 function mod:removeGridStatue()
   local room = game:GetRoom()
   
-  -- room:RemoveGridEntity doesn't save state on its own so we update the grid entity to a destroyed rock which does save state
   local gridEntity = room:GetGridEntity(mod.gridIndex52)
   if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
-    gridEntity:SetType(GridEntityType.GRID_ROCK)
-    gridEntity:SetVariant(0)
-    gridEntity.State = 2 -- destroyed/rubble
+    room:RemoveGridEntity(mod.gridIndex52, 0, false)
   end
 end
 
@@ -395,18 +399,6 @@ function mod:setPrices()
       pickup.AutoUpdatePrice = false
     end
   end
-end
-
-function mod:hasAngelsOrKeys()
-  for _, v in ipairs(Isaac.GetRoomEntities()) do
-    if v.Type == EntityType.ENTITY_URIEL or v.Type == EntityType.ENTITY_GABRIEL or
-       (v.Type == EntityType.ENTITY_PICKUP and v.Variant == PickupVariant.PICKUP_COLLECTIBLE and (v.SubType == CollectibleType.COLLECTIBLE_KEY_PIECE_1 or v.SubType == CollectibleType.COLLECTIBLE_KEY_PIECE_2))
-    then
-      return true
-    end
-  end
-  
-  return false
 end
 
 function mod:hasKeyPiece1()
@@ -498,19 +490,27 @@ function mod:setDevilRoomAllowed(roomDesc, override)
     mod.state.devilRooms[stageIndex][listIdx] = {}
   end
   
-  if type(mod.state.devilRooms[stageIndex][listIdx].allowed) ~= 'boolean' then
-    if type(override) == 'boolean' then
-      mod.state.devilRooms[stageIndex][listIdx].allowed = override
-    else
-      local rng = RNG()
-      rng:SetSeed(roomDesc.SpawnSeed, mod.rngShiftIndex) -- AwardSeed, DecorationSeed
-      mod.state.devilRooms[stageIndex][listIdx].allowed = rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
-    end
+  if type(override) == 'boolean' then
+    mod.state.devilRooms[stageIndex][listIdx].allowed = override
+  else
+    local rng = RNG()
+    rng:SetSeed(roomDesc.SpawnSeed, mod.rngShiftIndex) -- AwardSeed, DecorationSeed
+    mod.state.devilRooms[stageIndex][listIdx].allowed = rng:RandomInt(100) < mod.state.probabilitySatan[mod.difficulty[game.Difficulty]]
   end
   
-  if type(mod.state.devilRooms[stageIndex][listIdx].completed) ~= 'boolean' then
-    mod.state.devilRooms[stageIndex][listIdx].completed = false
+  mod.state.devilRooms[stageIndex][listIdx].spawned = false
+  mod.state.devilRooms[stageIndex][listIdx].completed = false
+end
+
+function mod:setDevilRoomSpawned(roomDesc)
+  local stageIndex = mod:getStageIndex()
+  local listIdx = tostring(roomDesc.ListIndex)
+  
+  if type(mod.state.devilRooms[stageIndex]) ~= 'table' or type(mod.state.devilRooms[stageIndex][listIdx]) ~= 'table' then
+    mod:setDevilRoomAllowed(roomDesc)
   end
+  
+  mod.state.devilRooms[stageIndex][listIdx].spawned = true
 end
 
 function mod:setDevilRoomCompleted(roomDesc)
@@ -528,12 +528,19 @@ function mod:isDevilRoomAllowed(roomDesc)
   local stageIndex = mod:getStageIndex()
   local listIdx = tostring(roomDesc.ListIndex)
   
-  if type(mod.state.devilRooms[stageIndex]) == 'table' then
-    if type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
-      if type(mod.state.devilRooms[stageIndex][listIdx].allowed) == 'boolean' then
-        return mod.state.devilRooms[stageIndex][listIdx].allowed
-      end
-    end
+  if type(mod.state.devilRooms[stageIndex]) == 'table' and type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
+    return mod.state.devilRooms[stageIndex][listIdx].allowed or false
+  end
+  
+  return false
+end
+
+function mod:isDevilRoomSpawned(roomDesc)
+  local stageIndex = mod:getStageIndex()
+  local listIdx = tostring(roomDesc.ListIndex)
+  
+  if type(mod.state.devilRooms[stageIndex]) == 'table' and type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
+    return mod.state.devilRooms[stageIndex][listIdx].spawned or false
   end
   
   return false
@@ -543,12 +550,8 @@ function mod:isDevilRoomCompleted(roomDesc)
   local stageIndex = mod:getStageIndex()
   local listIdx = tostring(roomDesc.ListIndex)
   
-  if type(mod.state.devilRooms[stageIndex]) == 'table' then
-    if type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
-      if type(mod.state.devilRooms[stageIndex][listIdx].completed) == 'boolean' then
-        return mod.state.devilRooms[stageIndex][listIdx].completed
-      end
-    end
+  if type(mod.state.devilRooms[stageIndex]) == 'table' and type(mod.state.devilRooms[stageIndex][listIdx]) == 'table' then
+    return mod.state.devilRooms[stageIndex][listIdx].completed or false
   end
   
   return false
@@ -603,13 +606,27 @@ end
 -- external item descriptions
 function mod:updateEid()
   if EID then
-    local description = '{{HolyMantle}} Grants a one-use Holy Mantle shield'
+    local card = Card.CARD_HOLY
+    local tblName = EID:getTableName(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TAROTCARD, card) -- cards
     
-    if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
-      description = description .. '#{{DevilRoom}} In Devil Rooms, spawns an Act of Contrition item wisp#{{AngelRoom}} Outside of Devil Rooms, grants a 10% Angel Room chance for the floor'
+    -- do this for all languages
+    -- if we only do this for english then regardless of the selected language, only english will be shown
+    for lang, v in pairs(EID.descriptions) do
+      local tbl = v[tblName]
+      
+      if tbl and tbl[card] then
+        local name = tbl[card][2]
+        local description = tbl[card][3]
+        
+        -- english only for now
+        if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
+          description = description .. '#{{DevilRoom}} In Devil Rooms, spawns an Act of Contrition item wisp#{{AngelRoom}} Outside of Devil Rooms, grants a 10% Angel Room chance for the floor'
+        end
+        
+        -- add to custom table
+        EID:addCard(card, description, name, lang)
+      end
     end
-    
-    EID:addCard(Card.CARD_HOLY, description, nil, nil) -- Holy Card, en_us
   end
 end
 
@@ -660,7 +677,7 @@ function mod:setupModConfigMenu()
         mod:updateEid()
         mod:save(true)
       end,
-      Info = { 'Spawn holy card after defeating Satan?' }
+      Info = { 'Spawn holy card after defeating Satan?', 'Grants act of contrition item wisp', '-or- 10% angel room chance' }
     }
   )
   ModConfigMenu.AddSetting(
@@ -699,24 +716,6 @@ function mod:setupModConfigMenu()
         mod:save(true)
       end,
       Info = { 'Default: Uriel has 450 HP, Gabriel has 750 HP', 'Easier: Uriel has 400 HP, Gabriel has 660 HP' }
-    }
-  )
-  ModConfigMenu.AddSetting(
-    mod.Name,
-    'Angels',
-    {
-      Type = ModConfigMenu.OptionType.BOOLEAN,
-      CurrentSetting = function()
-        return mod.state.forceUrielFirst
-      end,
-      Display = function()
-        return 'Uriel first: ' .. (mod.state.forceUrielFirst and 'yes' or 'no')
-      end,
-      OnChange = function(b)
-        mod.state.forceUrielFirst = b
-        mod:save(true)
-      end,
-      Info = { 'Force Uriel to spawn before Gabriel?', 'No: fall back to the game\'s default behavior' }
     }
   )
 end
