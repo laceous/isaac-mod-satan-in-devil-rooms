@@ -49,7 +49,7 @@ Mod Config Menu can be used to control how often Satan shows up and what the fal
 [/list]
 
 The Uriel first option was removed. To make this behave consistently between Angel and Devil Rooms, I'd recommend grabbing the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2927760501]Uriel before Gabriel[/url] mod.</description>
-    <version>1.25</version>
+    <version>1.26</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Rooms"/>

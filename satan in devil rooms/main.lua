@@ -248,6 +248,7 @@ function mod:onNpcInit(entityNpc)
   local level = game:GetLevel()
   local room = level:GetCurrentRoom()
   local stage = level:GetStage()
+  local fallenVariant = 1 -- 0 is normal
   local normalVariant = 0 -- 1 is krampus
   local stompVariant = 10 -- 0 is normal
   
@@ -264,17 +265,26 @@ function mod:onNpcInit(entityNpc)
         end
       end
     else -- not satan fight
-      if entityNpc.Type == EntityType.ENTITY_URIEL then
-        if mod.state.easierFallenAngels and entityNpc.HitPoints == 450 and entityNpc.MaxHitPoints == 450 then
-          entityNpc.HitPoints = 400
-          entityNpc.MaxHitPoints = 400
+      if entityNpc.Type == EntityType.ENTITY_URIEL or entityNpc.Type == EntityType.ENTITY_GABRIEL then
+        if entityNpc.Variant ~= fallenVariant then -- safety check
+          entityNpc:Morph(entityNpc.Type, fallenVariant, entityNpc.SubType, entityNpc:GetChampionColorIdx())
         end
-        mod:playStartingAngelMusic()
-      elseif entityNpc.Type == EntityType.ENTITY_GABRIEL then
-        if mod.state.easierFallenAngels and entityNpc.HitPoints == 750 and entityNpc.MaxHitPoints == 750 then
-          entityNpc.HitPoints = 660
-          entityNpc.MaxHitPoints = 660
+        
+        if entityNpc.Type == EntityType.ENTITY_URIEL then
+          -- normal hp is 450
+          -- another option would be to spawn in a non-fallen angel instead
+          if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 400 then
+            entityNpc.HitPoints = 400
+            entityNpc.MaxHitPoints = 400
+          end
+        else -- ENTITY_GABRIEL
+          -- normal hp is 750
+          if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 660 then
+            entityNpc.HitPoints = 660
+            entityNpc.MaxHitPoints = 660
+          end
         end
+        
         mod:playStartingAngelMusic()
       end
     end
@@ -290,17 +300,17 @@ function mod:onNpcUpdate(entityNpc)
   local stage = level:GetStage()
   
   if mod.isSatanFight and room:GetType() == RoomType.ROOM_DEVIL then
-    if entityNpc.HitPoints == 600 and entityNpc.MaxHitPoints == 600 then
-      if (isGreedMode and stage < LevelStage.STAGE2_GREED) or (not isGreedMode and stage < LevelStage.STAGE2_1) then
-        entityNpc.HitPoints = 150
-        entityNpc.MaxHitPoints = 150
-      elseif (isGreedMode and stage < LevelStage.STAGE3_GREED) or (not isGreedMode and stage < LevelStage.STAGE3_1) then
-        entityNpc.HitPoints = 300
-        entityNpc.MaxHitPoints = 300
-      elseif (isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1) then
-        entityNpc.HitPoints = 450
-        entityNpc.MaxHitPoints = 450
-      end
+    -- normal hp is 600
+    -- this doesn't differentiate between normal and repentance floors
+    if entityNpc.MaxHitPoints > 150 and ((isGreedMode and stage < LevelStage.STAGE2_GREED) or (not isGreedMode and stage < LevelStage.STAGE2_1)) then
+      entityNpc.HitPoints = 150
+      entityNpc.MaxHitPoints = 150
+    elseif entityNpc.MaxHitPoints > 300 and ((isGreedMode and stage < LevelStage.STAGE3_GREED) or (not isGreedMode and stage < LevelStage.STAGE3_1)) then
+      entityNpc.HitPoints = 300
+      entityNpc.MaxHitPoints = 300
+    elseif entityNpc.MaxHitPoints > 450 and ((isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1)) then
+      entityNpc.HitPoints = 450
+      entityNpc.MaxHitPoints = 450
     end
   end
 end
