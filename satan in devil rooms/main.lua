@@ -147,30 +147,28 @@ function mod:onNewRoom()
       end
     end
     
+    local statuesCount = #statues
+    local pickupsCount = #pickups
+    
     -- don't spawn satan in small devil rooms
     if room:GetRoomShape() == RoomShape.ROOMSHAPE_1x1 and room:IsClear() and mod:isDevilRoomAllowed(roomDesc) and
        (
-         (#pickups > 0 and #statues == 1 and room:GetGridIndex(statues[1].Position) == mod.gridIndex52) or
+         (pickupsCount > 0 and statuesCount == 1 and room:GetGridIndex(statues[1].Position) == mod.gridIndex52) or
          mod:isDevilRoomSpawned(roomDesc)
        )
     then
+      if statuesCount == 1 then
+        mod:removeStatue(statues[1]) -- effect + grid
+      end
+      mod:removePits() -- make room fair for satan fight
+      
       if mod:isDevilRoomCompleted(roomDesc) then
-        if #statues == 1 then
-          statues[1]:Remove() -- effect
-        end
-        mod:removeGridStatue()
-        mod:removePits()
         mod:setPrices()
       else
         mod:setDevilRoomSpawned(roomDesc)
-        statues[1]:Remove()
-        
-        -- devil statue should be at GridIndex(52)
-        -- satan needs to go to GridIndex(22) because its base position is 2 spaces higher (52 - 15 - 15 = 22)
-        Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector.Zero, nil)
+        mod:spawnSatan()
         mod.isSatanFight = true
         mod:closeDoors() -- needed if this is triggered from onGameStart
-        mod:removePits() -- make room fair for satan fight
         mod:showSatanFightText()
         room:SetClear(false)
       end
@@ -191,10 +189,11 @@ function mod:onUpdate()
       if room:IsClear() then
         mod.isSatanFight = false
         mod:setDevilRoomCompleted(roomDesc)
-        mod:addReplacementRock()
         mod:setPrices()
         mod:playEndingMusic()
         mod:updateEid()
+      else
+        mod:solidifySatanStatue() -- the game keeps trying to undo this
       end
     else -- not satan fight
       if mod:isDevilRoomCompleted(roomDesc) then
@@ -232,10 +231,12 @@ function mod:onPreEntitySpawn(entityType, variant, subType, position, velocity, 
   local fallenVariant = 1
   
   if room:GetType() == RoomType.ROOM_DEVIL then
-    if (entityType == EntityType.ENTITY_URIEL or entityType == EntityType.ENTITY_GABRIEL) then
+    if entityType == EntityType.ENTITY_URIEL or entityType == EntityType.ENTITY_GABRIEL then
       return { entityType, fallenVariant, subType, seed } -- fallen uriel / fallen gabriel
     elseif entityType == EntityType.ENTITY_EFFECT and (variant == EffectVariant.DEVIL or variant == EffectVariant.ANGEL) then
-      return { entityType, EffectVariant.DEVIL, subType, seed } -- the devil effect sometimes turns into an angel effect
+      -- the devil effect will turn into an angel effect when walking back into the room
+      -- because we switched the statue variant to an angel so we could spawn uriel/gabriel
+      return { entityType, EffectVariant.DEVIL, subType, seed }
     end
   end
 end
@@ -256,7 +257,6 @@ function mod:onNpcInit(entityNpc)
         entityNpc:Remove()
       elseif entityNpc.Type == EntityType.ENTITY_FALLEN and entityNpc.Variant == normalVariant then -- filter out fallen
         entityNpc:Remove()
-        mod:removeGridStatue()
         mod:playStartingSatanMusic()
       elseif entityNpc.Type == EntityType.ENTITY_SATAN and entityNpc.Variant == stompVariant then
         if (isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1) then -- filter out foot stomps before the womb
@@ -374,31 +374,53 @@ end
 
 function mod:updateGridStatues(statues)
   local room = game:GetRoom()
+  local angelVariant = 1 -- 0 is devil
   
   -- there's a grid entity that accompanies the statue effect
   for _, statue in ipairs(statues) do
     local gridEntity = room:GetGridEntityFromPos(statue.Position)
-    if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
-      gridEntity:SetVariant(1) -- angel room variant that can spawn uriel/gabriel, this can cause an angel statue effect to be shown
+    if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE and gridEntity:GetVariant() ~= angelVariant then
+      gridEntity:SetVariant(angelVariant) -- angel room variant that can spawn uriel/gabriel, this can cause an angel statue effect to be shown
     end
   end
 end
 
-function mod:removeGridStatue()
+function mod:removeStatue(statue)
   local room = game:GetRoom()
+  local destroyedState = 2 -- destroyed/rubble
   
-  local gridEntity = room:GetGridEntity(mod.gridIndex52)
-  if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE then
-    room:RemoveGridEntity(mod.gridIndex52, 0, false)
+  statue:Remove() -- effect
+  
+  -- this allows you to walk through the satan statue
+  -- but it blocks the devil statue from showing up again on continue
+  local gridEntity = room:GetGridEntityFromPos(statue.Position)
+  if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE and gridEntity.State ~= destroyedState then
+    gridEntity.State = destroyedState
   end
 end
 
--- this blocks the statue from showing up again on continue
-function mod:addReplacementRock()
+function mod:solidifySatanStatue()
+  local room = game:GetRoom()
+  local satans = Isaac.FindByType(EntityType.ENTITY_SATAN, 0, -1, false, false)
+  
+  if #satans == 1 then
+    local satan = satans[1]:ToNPC()
+    if satan and satan.State == NpcState.STATE_IDLE then
+      local gridEntity = room:GetGridEntity(mod.gridIndex52)
+      if gridEntity and gridEntity:GetType() == GridEntityType.GRID_STATUE and gridEntity.CollisionClass ~= GridCollisionClass.COLLISION_SOLID then
+        gridEntity.CollisionClass = GridCollisionClass.COLLISION_SOLID
+      end
+    end
+  end
+end
+
+function mod:spawnSatan()
   local room = game:GetRoom()
   
-  local gridEntity = Isaac.GridSpawn(GridEntityType.GRID_ROCK, 0, room:GetGridPosition(mod.gridIndex52), true)
-  gridEntity.State = 2 -- destroyed/rubble
+  -- devil statue should be at GridIndex(52)
+  -- satan needs to go to GridIndex(22) because its base position is 2 spaces higher (52 - 15 - 15 = 22)
+  local satan = Isaac.Spawn(EntityType.ENTITY_SATAN, 0, 0, room:GetGridPosition(mod.gridIndex22), Vector.Zero, nil)
+  satan:Update() -- fix on continue positioning, why does onGameStart happen after onNewRoom?
 end
 
 function mod:spawnHolyCard(pos)
