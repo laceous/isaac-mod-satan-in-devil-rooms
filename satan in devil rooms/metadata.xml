@@ -48,8 +48,14 @@ Mod Config Menu can be used to control how often Satan shows up and what the fal
     [*]Gabriel: 750 -&gt; 660
 [/list]
 
-The Uriel first option was removed. To make this behave consistently between Angel and Devil Rooms, I'd recommend grabbing the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2927760501]Uriel before Gabriel[/url] mod.</description>
-    <version>1.26</version>
+The Uriel first option was removed. To make this behave consistently between Angel and Devil Rooms, I'd recommend grabbing the [url=https://steamcommunity.com/sharedfiles/filedetails/?id=2927760501]Uriel before Gabriel[/url] mod.
+
+If you want harder versions of Satan, Uriel, or Gabriel then I'd recommend:
+[list]
+    [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2847697646]Improved &amp; Reworked Foes[/url]
+    [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2500963144]Repentance Eternal Edition[/url]
+[/list]</description>
+    <version>1.27</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Rooms"/>

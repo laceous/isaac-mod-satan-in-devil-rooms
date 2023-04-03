@@ -343,8 +343,20 @@ function mod:onNpcDeath(entityNpc)
       end
     end
     
-    mod:playEndingMusic()
+    if not mod:hasAliveAngel() then
+      mod:playEndingMusic()
+    end
   end
+end
+
+function mod:hasAliveAngel()
+  for _, v in ipairs(Isaac.GetRoomEntities()) do
+    if (v.Type == EntityType.ENTITY_URIEL or v.Type == EntityType.ENTITY_GABRIEL) and not v:HasMortalDamage() then
+      return true
+    end
+  end
+  
+  return false
 end
 
 function mod:showSatanFightText()
@@ -505,7 +517,9 @@ function mod:playStartingAngelMusic()
     bossMusic = room:GetDecorationSeed() % 2 == 0 and Music.MUSIC_BOSS or Music.MUSIC_BOSS2
   end
   
-  music:Play(bossMusic, Options.MusicVolume)
+  if music:GetCurrentMusicID() ~= bossMusic then
+    music:Play(bossMusic, Options.MusicVolume)
+  end
 end
 
 -- some of this is borrowed from music mod callback
