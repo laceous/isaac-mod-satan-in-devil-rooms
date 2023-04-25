@@ -73,7 +73,8 @@ function mod:onGameStart(isContinue)
     end
   end
   
-  mod:updateEid()
+  mod:updateHolyCardEid()
+  mod:updateFiligreeFeatherEid()
   
   mod.onGameStartHasRun = true
   mod:onNewRoom()
@@ -125,10 +126,11 @@ function mod:onNewRoom()
   local level = game:GetLevel()
   local room = level:GetCurrentRoom()
   local roomDesc = level:GetCurrentRoomDesc()
+  local roomType = room:GetType()
   
   mod.isSatanFight = false
   
-  if room:GetType() == RoomType.ROOM_DEVIL then
+  if roomType == RoomType.ROOM_DEVIL then
     if room:IsFirstVisit() then
       mod:setDevilRoomAllowed(roomDesc)
     end
@@ -176,6 +178,9 @@ function mod:onNewRoom()
       mod:updateGridStatues(statues)
       mod:setDevilRoomAllowed(roomDesc, false)
     end
+  elseif roomType == RoomType.ROOM_CURSE then
+    local statues = Isaac.FindByType(EntityType.ENTITY_EFFECT, EffectVariant.DEVIL, -1, false, false)
+    mod:updateGridStatues(statues)
   end
 end
 
@@ -191,7 +196,7 @@ function mod:onUpdate()
         mod:setDevilRoomCompleted(roomDesc)
         mod:setPrices()
         mod:playEndingMusic()
-        mod:updateEid()
+        mod:updateHolyCardEid()
       else
         mod:solidifySatanStatue() -- the game keeps trying to undo this
       end
@@ -228,9 +233,10 @@ end
 
 function mod:onPreEntitySpawn(entityType, variant, subType, position, velocity, spawner, seed)
   local room = game:GetRoom()
+  local roomType = room:GetType()
   local fallenVariant = 1
   
-  if room:GetType() == RoomType.ROOM_DEVIL then
+  if roomType == RoomType.ROOM_DEVIL or roomType == RoomType.ROOM_CURSE then
     if entityType == EntityType.ENTITY_URIEL or entityType == EntityType.ENTITY_GABRIEL then
       return { entityType, fallenVariant, subType, seed } -- fallen uriel / fallen gabriel
     elseif entityType == EntityType.ENTITY_EFFECT and (variant == EffectVariant.DEVIL or variant == EffectVariant.ANGEL) then
@@ -248,45 +254,44 @@ function mod:onNpcInit(entityNpc)
   local level = game:GetLevel()
   local room = level:GetCurrentRoom()
   local stage = level:GetStage()
+  local roomType = room:GetType()
   local fallenVariant = 1 -- 0 is normal
   local normalVariant = 0 -- 1 is krampus
   local stompVariant = 10 -- 0 is normal
   
-  if room:GetType() == RoomType.ROOM_DEVIL then
-    if mod.isSatanFight then
-      if entityNpc.Type == EntityType.ENTITY_LEECH or entityNpc.Type == EntityType.ENTITY_NULLS then -- filter out leech/nulls
+  if roomType == RoomType.ROOM_DEVIL and mod.isSatanFight then
+    if entityNpc.Type == EntityType.ENTITY_LEECH or entityNpc.Type == EntityType.ENTITY_NULLS then -- filter out leech/nulls
+      entityNpc:Remove()
+    elseif entityNpc.Type == EntityType.ENTITY_FALLEN and entityNpc.Variant == normalVariant then -- filter out fallen
+      entityNpc:Remove()
+      mod:playStartingSatanMusic()
+    elseif entityNpc.Type == EntityType.ENTITY_SATAN and entityNpc.Variant == stompVariant then
+      if (isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1) then -- filter out foot stomps before the womb
         entityNpc:Remove()
-      elseif entityNpc.Type == EntityType.ENTITY_FALLEN and entityNpc.Variant == normalVariant then -- filter out fallen
-        entityNpc:Remove()
-        mod:playStartingSatanMusic()
-      elseif entityNpc.Type == EntityType.ENTITY_SATAN and entityNpc.Variant == stompVariant then
-        if (isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1) then -- filter out foot stomps before the womb
-          entityNpc:Remove()
+      end
+    end
+  elseif (roomType == RoomType.ROOM_DEVIL or roomType == RoomType.ROOM_CURSE) and not mod.isSatanFight then
+    if entityNpc.Type == EntityType.ENTITY_URIEL or entityNpc.Type == EntityType.ENTITY_GABRIEL then
+      if entityNpc.Variant ~= fallenVariant then -- safety check
+        entityNpc:Morph(entityNpc.Type, fallenVariant, entityNpc.SubType, entityNpc:GetChampionColorIdx())
+      end
+      
+      if entityNpc.Type == EntityType.ENTITY_URIEL then
+        -- normal hp is 450
+        -- another option would be to spawn in a non-fallen angel instead
+        if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 400 then
+          entityNpc.HitPoints = 400
+          entityNpc.MaxHitPoints = 400
+        end
+      else -- ENTITY_GABRIEL
+        -- normal hp is 750
+        if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 660 then
+          entityNpc.HitPoints = 660
+          entityNpc.MaxHitPoints = 660
         end
       end
-    else -- not satan fight
-      if entityNpc.Type == EntityType.ENTITY_URIEL or entityNpc.Type == EntityType.ENTITY_GABRIEL then
-        if entityNpc.Variant ~= fallenVariant then -- safety check
-          entityNpc:Morph(entityNpc.Type, fallenVariant, entityNpc.SubType, entityNpc:GetChampionColorIdx())
-        end
-        
-        if entityNpc.Type == EntityType.ENTITY_URIEL then
-          -- normal hp is 450
-          -- another option would be to spawn in a non-fallen angel instead
-          if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 400 then
-            entityNpc.HitPoints = 400
-            entityNpc.MaxHitPoints = 400
-          end
-        else -- ENTITY_GABRIEL
-          -- normal hp is 750
-          if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 660 then
-            entityNpc.HitPoints = 660
-            entityNpc.MaxHitPoints = 660
-          end
-        end
-        
-        mod:playStartingAngelMusic()
-      end
+      
+      mod:playStartingAngelMusic()
     end
   end
 end
@@ -299,7 +304,7 @@ function mod:onNpcUpdate(entityNpc)
   local room = level:GetCurrentRoom()
   local stage = level:GetStage()
   
-  if mod.isSatanFight and room:GetType() == RoomType.ROOM_DEVIL then
+  if room:GetType() == RoomType.ROOM_DEVIL and mod.isSatanFight then
     -- normal hp is 600
     -- this doesn't differentiate between normal and repentance floors
     if entityNpc.MaxHitPoints > 150 and ((isGreedMode and stage < LevelStage.STAGE2_GREED) or (not isGreedMode and stage < LevelStage.STAGE2_1)) then
@@ -317,9 +322,11 @@ end
 
 -- filtered to ENTITY_URIEL and ENTITY_GABRIEL
 function mod:onNpcDeath(entityNpc)
+  local itemPool = game:GetItemPool()
   local room = game:GetRoom()
+  local roomType = room:GetType()
   
-  if room:GetType() == RoomType.ROOM_DEVIL then
+  if roomType == RoomType.ROOM_DEVIL or roomType == RoomType.ROOM_CURSE then
     local keyPiece = entityNpc.Type == EntityType.ENTITY_URIEL and CollectibleType.COLLECTIBLE_KEY_PIECE_1 or CollectibleType.COLLECTIBLE_KEY_PIECE_2
     local hasKey = mod:hasBothKeyPieces()
     local position = room:FindFreePickupSpawnPosition(entityNpc.Position, 0, false, false)
@@ -332,10 +339,10 @@ function mod:onNpcDeath(entityNpc)
     end
     
     if mod.state.fallenAngelDropType == 'items only' or mod:hasFiligreeFeather() then
-      -- null will use the item pool of the current room
-      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, CollectibleType.COLLECTIBLE_NULL, position, Vector.Zero, nil)
+      local collectible = itemPool:GetCollectible(ItemPoolType.POOL_DEVIL, false, entityNpc.DropSeed, CollectibleType.COLLECTIBLE_NULL) -- InitSeed
+      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector.Zero, nil)
     elseif mod.state.fallenAngelDropType == 'keys then items' then
-      local collectible = hasKey and CollectibleType.COLLECTIBLE_NULL or keyPiece
+      local collectible = hasKey and itemPool:GetCollectible(ItemPoolType.POOL_DEVIL, false, entityNpc.DropSeed, CollectibleType.COLLECTIBLE_NULL) or keyPiece
       Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector.Zero, nil)
     else -- keys only
       if not hasKey then
@@ -664,28 +671,47 @@ function mod:getDropTypesIndex(name)
 end
 
 -- external item descriptions
-function mod:updateEid()
+function mod:updateHolyCardEid()
   if EID then
     local card = Card.CARD_HOLY
-    local tblName = EID:getTableName(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TAROTCARD, card) -- cards
+    local descriptionAddition = '#{{DevilRoom}} In Devil Rooms, spawns an Act of Contrition item wisp#{{AngelRoom}} Outside of Devil Rooms, grants a 10% Angel Room chance for the floor'
     
-    -- do this for all languages
-    -- if we only do this for english then regardless of the selected language, only english will be shown
-    for lang, v in pairs(EID.descriptions) do
-      local tbl = v[tblName]
-      
-      if tbl and tbl[card] then
-        local name = tbl[card][2]
-        local description = tbl[card][3]
-        
-        -- english only for now
-        if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
-          description = description .. '#{{DevilRoom}} In Devil Rooms, spawns an Act of Contrition item wisp#{{AngelRoom}} Outside of Devil Rooms, grants a 10% Angel Room chance for the floor'
-        end
-        
-        -- add to custom table
-        EID:addCard(card, description, name, lang)
+    mod:updateEidInternal(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TAROTCARD, card, function(name, description, lang)
+      -- english only for now
+      if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
+        description = description .. descriptionAddition
       end
+      
+      -- add to custom table
+      EID:addCard(card, description, name, lang)
+    end)
+  end
+end
+
+function mod:updateFiligreeFeatherEid()
+  if EID then
+    local trinket = TrinketType.TRINKET_FILIGREE_FEATHERS
+    local descriptionAddition = '#Fallen Angels drop Devil items instead of Key Pieces'
+    
+    mod:updateEidInternal(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TRINKET, trinket, function(name, description, lang)
+      EID:addTrinket(trinket, description .. descriptionAddition, name, lang)
+    end)
+  end
+end
+
+function mod:updateEidInternal(entityType, variant, subType, func)
+  local tblName = EID:getTableName(entityType, variant, subType)
+  
+  -- do this for all languages
+  -- if we only do this for english then regardless of the selected language, only english will be shown
+  for lang, v in pairs(EID.descriptions) do
+    local tbl = v[tblName]
+    
+    if tbl and tbl[subType] then
+      local name = tbl[subType][2]
+      local description = tbl[subType][3]
+      
+      func(name, description, lang)
     end
   end
 end
@@ -734,7 +760,7 @@ function mod:setupModConfigMenu()
       end,
       OnChange = function(b)
         mod.state.spawnHolyCard = b
-        mod:updateEid()
+        mod:updateHolyCardEid()
         mod:save(true)
       end,
       Info = { 'Spawn holy card after defeating Satan?', 'Grants act of contrition item wisp', '-or- 10% angel room chance' }
@@ -757,7 +783,7 @@ function mod:setupModConfigMenu()
         mod.state.fallenAngelDropType = mod.dropTypes[n]
         mod:save(true)
       end,
-      Info = { 'Should fallen angels drop items', 'in addition to key pieces?' }
+      Info = { 'Should fallen angels drop', 'items or key pieces?' }
     }
   )
   ModConfigMenu.AddSetting(

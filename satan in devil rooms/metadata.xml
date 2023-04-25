@@ -36,7 +36,9 @@ Note: You can't use the temporary Holy Mantle effect to pay the spike price.
 
 Note: If you don't like this addition to Holy Cards then leave the option turned off in MCM. It'll disable it completely.
 
-If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. By default, they'll drop key pieces like normal.
+If Satan doesn't show up then you can bomb the devil statue to fight the fallen forms of Uriel and Gabriel. By default, they'll drop key pieces like normal. Filigree Feather will cause items to spawn instead.
+
+You can also bomb devil statues in Curse Rooms to spawn fallen angels.
 
 Note: You'll need to have unlocked secret 155 &quot;The Angels Await!!!&quot; by completing chapter 6 (chest/dark room) before the fallen angels will spawn.
 
@@ -55,7 +57,7 @@ If you want harder versions of Satan, Uriel, or Gabriel then I'd recommend:
     [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2847697646]Improved &amp; Reworked Foes[/url]
     [*][url=https://steamcommunity.com/sharedfiles/filedetails/?id=2500963144]Repentance Eternal Edition[/url]
 [/list]</description>
-    <version>1.27</version>
+    <version>1.28</version>
     <visibility>Public</visibility>
     <tag id="Lua"/>
     <tag id="Rooms"/>
