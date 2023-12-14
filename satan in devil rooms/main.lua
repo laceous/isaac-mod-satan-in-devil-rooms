@@ -73,9 +73,6 @@ function mod:onGameStart(isContinue)
     end
   end
   
-  mod:updateHolyCardEid()
-  mod:updateFiligreeFeatherEid()
-  
   mod.onGameStartHasRun = true
   mod:onNewRoom()
 end
@@ -196,7 +193,6 @@ function mod:onUpdate()
         mod:setDevilRoomCompleted(roomDesc)
         mod:setPrices()
         mod:playEndingMusic()
-        mod:updateHolyCardEid()
       else
         mod:solidifySatanStatue() -- the game keeps trying to undo this
       end
@@ -624,6 +620,7 @@ function mod:isDevilRoomCompleted(roomDesc)
   return false
 end
 
+-- edge case: replaying a floor can cause a false negative here
 function mod:isAnyDevilRoomCompleted()
   for _, v in pairs(mod.state.devilRooms) do
     for _, w in pairs(v) do
@@ -671,49 +668,22 @@ function mod:getDropTypesIndex(name)
 end
 
 -- external item descriptions
-function mod:updateHolyCardEid()
-  if EID then
-    local card = Card.CARD_HOLY
-    local descriptionAddition = '#{{DevilRoom}} In Devil Rooms, spawns an Act of Contrition item wisp#{{AngelRoom}} Outside of Devil Rooms, grants a 10% Angel Room chance for the floor'
-    
-    mod:updateEidInternal(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TAROTCARD, card, function(name, description, lang)
-      -- english only for now
-      if mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted() then
-        description = description .. descriptionAddition
-      end
-      
-      -- add to custom table
-      EID:addCard(card, description, name, lang)
-    end)
-  end
-end
-
-function mod:updateFiligreeFeatherEid()
-  if EID then
-    local trinket = TrinketType.TRINKET_FILIGREE_FEATHERS
-    local descriptionAddition = '#Fallen Angels drop Devil items instead of Key Pieces'
-    
-    mod:updateEidInternal(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_TRINKET, trinket, function(name, description, lang)
-      EID:addTrinket(trinket, description .. descriptionAddition, name, lang)
-    end)
-  end
-end
-
-function mod:updateEidInternal(entityType, variant, subType, func)
-  local tblName = EID:getTableName(entityType, variant, subType)
+function mod:setupEid()
+  EID:addDescriptionModifier(mod.Name .. ' - Holy Card', function(descObj)
+    return descObj.ObjType == EntityType.ENTITY_PICKUP and descObj.ObjVariant == PickupVariant.PICKUP_TAROTCARD and descObj.ObjSubType == Card.CARD_HOLY and
+           mod.state.spawnHolyCard and mod:isAnyDevilRoomCompleted()
+  end, function(descObj)
+    -- english only for now
+    EID:appendToDescription(descObj, '#{{DevilRoom}} In Devil Rooms, spawns an Act of Contrition ({{Collectible601}}) item wisp#{{AngelRoom}} Outside of Devil Rooms, grants a 10% Angel Room chance for the floor')
+    return descObj
+  end)
   
-  -- do this for all languages
-  -- if we only do this for english then regardless of the selected language, only english will be shown
-  for lang, v in pairs(EID.descriptions) do
-    local tbl = v[tblName]
-    
-    if tbl and tbl[subType] then
-      local name = tbl[subType][2]
-      local description = tbl[subType][3]
-      
-      func(name, description, lang)
-    end
-  end
+  EID:addDescriptionModifier(mod.Name .. ' - Filigree Feather', function(descObj)
+    return descObj.ObjType == EntityType.ENTITY_PICKUP and descObj.ObjVariant == PickupVariant.PICKUP_TRINKET and descObj.ObjSubType == TrinketType.TRINKET_FILIGREE_FEATHERS
+  end, function(descObj)
+    EID:appendToDescription(descObj, '#Fallen Angels drop devil items instead of Key Pieces')
+    return descObj
+  end)
 end
 
 -- start ModConfigMenu --
@@ -760,7 +730,6 @@ function mod:setupModConfigMenu()
       end,
       OnChange = function(b)
         mod.state.spawnHolyCard = b
-        mod:updateHolyCardEid()
         mod:save(true)
       end,
       Info = { 'Spawn holy card after defeating Satan?', 'Grants act of contrition item wisp', '-or- 10% angel room chance' }
@@ -825,6 +794,9 @@ mod:AddCallback(ModCallbacks.MC_NPC_UPDATE, mod.onNpcUpdate, EntityType.ENTITY_S
 mod:AddCallback(ModCallbacks.MC_POST_NPC_DEATH, mod.onNpcDeath, EntityType.ENTITY_URIEL)
 mod:AddCallback(ModCallbacks.MC_POST_NPC_DEATH, mod.onNpcDeath, EntityType.ENTITY_GABRIEL)
 
+if EID then
+  mod:setupEid()
+end
 if ModConfigMenu then
   mod:setupModConfigMenu()
 end
