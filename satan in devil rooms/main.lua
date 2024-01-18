@@ -251,9 +251,9 @@ function mod:onNpcInit(entityNpc)
   local room = level:GetCurrentRoom()
   local stage = level:GetStage()
   local roomType = room:GetType()
-  local fallenVariant = 1 -- 0 is normal
-  local normalVariant = 0 -- 1 is krampus
-  local stompVariant = 10 -- 0 is normal
+  local normalVariant = 0 -- 1 is krampus, uriel/gabriel/fallen
+  local fallenVariant = 1 -- 0 is normal, uriel/gabriel
+  local stompVariant = 10 -- 0 is normal, satan
   
   if roomType == RoomType.ROOM_DEVIL and mod.isSatanFight then
     if entityNpc.Type == EntityType.ENTITY_LEECH or entityNpc.Type == EntityType.ENTITY_NULLS then -- filter out leech/nulls
@@ -272,19 +272,21 @@ function mod:onNpcInit(entityNpc)
         entityNpc:Morph(entityNpc.Type, fallenVariant, entityNpc.SubType, entityNpc:GetChampionColorIdx())
       end
       
-      if entityNpc.Type == EntityType.ENTITY_URIEL then
-        -- normal hp is 450
-        -- another option would be to spawn in a non-fallen angel instead
-        if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 400 then
-          entityNpc.HitPoints = 400
-          entityNpc.MaxHitPoints = 400
-        end
-      else -- ENTITY_GABRIEL
-        -- normal hp is 750
-        if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > 660 then
-          entityNpc.HitPoints = 660
-          entityNpc.MaxHitPoints = 660
-        end
+      -- fallen uriel hp is 450
+      -- fallen gabriel hp is 750
+      -- another option would be to spawn in a non-fallen angel instead
+      local angelHP
+      if REPENTOGON then
+        -- stage hp explanation: https://bindingofisaacrebirth.fandom.com/wiki/Stage_HP
+        local angelCfg = EntityConfig.GetEntity(entityNpc.Type, normalVariant, entityNpc.SubType)
+        angelHP = angelCfg:GetBaseHP() + (math.min(4, stage) + 0.8 * math.max(0, math.min(stage - 5, 5))) * angelCfg:GetStageHP()
+      else
+        angelHP = entityNpc.Type == EntityType.ENTITY_URIEL and 400 or 660
+      end
+      
+      if mod.state.easierFallenAngels and entityNpc.MaxHitPoints > angelHP then
+        entityNpc.HitPoints = angelHP
+        entityNpc.MaxHitPoints = angelHP
       end
       
       mod:playStartingAngelMusic()
@@ -302,16 +304,28 @@ function mod:onNpcUpdate(entityNpc)
   
   if room:GetType() == RoomType.ROOM_DEVIL and mod.isSatanFight then
     -- normal hp is 600
+    local satanHP
+    if REPENTOGON then
+      local satanCfg = EntityConfig.GetEntity(entityNpc.Type, entityNpc.Variant, entityNpc.SubType)
+      satanHP = satanCfg:GetBaseHP() + (math.min(4, stage) + 0.8 * math.max(0, math.min(stage - 5, 5))) * satanCfg:GetStageHP()
+    else
+      satanHP = 600
+    end
+    
+    local quarterHP = satanHP * 0.25       -- 150
+    local halfHP = satanHP * 0.5           -- 300
+    local threeQuartersHP = satanHP * 0.75 -- 450
+    
     -- this doesn't differentiate between normal and repentance floors
-    if entityNpc.MaxHitPoints > 150 and ((isGreedMode and stage < LevelStage.STAGE2_GREED) or (not isGreedMode and stage < LevelStage.STAGE2_1)) then
-      entityNpc.HitPoints = 150
-      entityNpc.MaxHitPoints = 150
-    elseif entityNpc.MaxHitPoints > 300 and ((isGreedMode and stage < LevelStage.STAGE3_GREED) or (not isGreedMode and stage < LevelStage.STAGE3_1)) then
-      entityNpc.HitPoints = 300
-      entityNpc.MaxHitPoints = 300
-    elseif entityNpc.MaxHitPoints > 450 and ((isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1)) then
-      entityNpc.HitPoints = 450
-      entityNpc.MaxHitPoints = 450
+    if entityNpc.MaxHitPoints > quarterHP and ((isGreedMode and stage < LevelStage.STAGE2_GREED) or (not isGreedMode and stage < LevelStage.STAGE2_1)) then
+      entityNpc.HitPoints = quarterHP
+      entityNpc.MaxHitPoints = quarterHP
+    elseif entityNpc.MaxHitPoints > halfHP and ((isGreedMode and stage < LevelStage.STAGE3_GREED) or (not isGreedMode and stage < LevelStage.STAGE3_1)) then
+      entityNpc.HitPoints = halfHP
+      entityNpc.MaxHitPoints = halfHP
+    elseif entityNpc.MaxHitPoints > threeQuartersHP and ((isGreedMode and stage < LevelStage.STAGE4_GREED) or (not isGreedMode and stage < LevelStage.STAGE4_1)) then
+      entityNpc.HitPoints = threeQuartersHP
+      entityNpc.MaxHitPoints = threeQuartersHP
     end
   end
 end
