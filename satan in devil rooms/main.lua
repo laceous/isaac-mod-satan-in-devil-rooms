@@ -353,10 +353,16 @@ function mod:onNpcDeath(entityNpc)
       Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector.Zero, nil)
     elseif mod.state.fallenAngelDropType == 'keys then items' then
       local collectible = hasKey and itemPool:GetCollectible(ItemPoolType.POOL_DEVIL, false, entityNpc.DropSeed, CollectibleType.COLLECTIBLE_NULL) or keyPiece
-      Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector.Zero, nil)
+      local pickup = Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, collectible, position, Vector.Zero, nil):ToPickup()
+      if REPENTOGON and not hasKey and #pickup:GetCollectibleCycle() > 0 then
+        pickup:RemoveCollectibleCycle()
+      end
     else -- keys only
       if not hasKey then
-        Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, keyPiece, position, Vector.Zero, nil)
+        local pickup = Isaac.Spawn(EntityType.ENTITY_PICKUP, PickupVariant.PICKUP_COLLECTIBLE, keyPiece, position, Vector.Zero, nil):ToPickup()
+        if REPENTOGON and #pickup:GetCollectibleCycle() > 0 then
+          pickup:RemoveCollectibleCycle() -- don't cycle key pieces for Tainted Isaac, normal angel behavior
+        end
       end
     end
     
