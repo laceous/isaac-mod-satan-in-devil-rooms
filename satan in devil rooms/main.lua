@@ -382,6 +382,17 @@ function mod:hasAliveAngel()
   return false
 end
 
+function mod:localize(key)
+  if REPENTOGON then
+    local s = Isaac.GetString('Entities', key)
+    return (s == nil or s == 'StringTable::InvalidCategory' or s == 'StringTable::InvalidKey') and key or s
+  end
+  
+  if key == '#SATAN' then
+    return 'Satan'
+  end
+end
+
 function mod:showSatanFightText()
   local hud = game:GetHUD()
   local player1 = game:GetPlayer(0)
@@ -392,7 +403,7 @@ function mod:showSatanFightText()
     playerName = player1:GetName() .. '+' .. player2:GetName()
   end
   
-  hud:ShowItemText(playerName .. ' vs Satan', nil, false)
+  hud:ShowItemText(playerName .. ' VS ' .. mod:localize('#SATAN'), nil, false)
 end
 
 function mod:closeDoors()
