@@ -389,8 +389,10 @@ function mod:localize(key)
   end
   
   if key == '#SATAN' then
-    return 'Satan'
+    return 'SATAN' -- upper case to match VS
   end
+  
+  return key
 end
 
 function mod:showSatanFightText()
