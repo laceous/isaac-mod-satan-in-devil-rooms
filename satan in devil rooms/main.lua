@@ -136,12 +136,14 @@ function mod:onNewRoom()
     local pickups = {}
     
     for _, entity in ipairs(Isaac.GetRoomEntities()) do
-      if entity.Type == EntityType.ENTITY_EFFECT and entity.Variant == EffectVariant.DEVIL then
-        table.insert(statues, entity)
-      elseif entity.Type == EntityType.ENTITY_PICKUP and entity.Variant == PickupVariant.PICKUP_COLLECTIBLE then
-        local pickup = entity:ToPickup()
-        if pickup.Price ~= 0 and pickup.Price ~= PickupPrice.PRICE_FREE and pickup.Price ~= PickupPrice.PRICE_SPIKES then
-          table.insert(pickups, pickup)
+      if entity:Exists() then
+        if entity.Type == EntityType.ENTITY_EFFECT and entity.Variant == EffectVariant.DEVIL then
+          table.insert(statues, entity)
+        elseif entity.Type == EntityType.ENTITY_PICKUP and entity.Variant == PickupVariant.PICKUP_COLLECTIBLE then
+          local pickup = entity:ToPickup()
+          if pickup.Price ~= 0 and pickup.Price ~= PickupPrice.PRICE_FREE and pickup.Price ~= PickupPrice.PRICE_SPIKES then
+            table.insert(pickups, pickup)
+          end
         end
       end
     end
@@ -810,7 +812,7 @@ end
 mod:AddCallback(ModCallbacks.MC_POST_GAME_STARTED, mod.onGameStart)
 mod:AddCallback(ModCallbacks.MC_PRE_GAME_EXIT, mod.onGameExit)
 mod:AddCallback(ModCallbacks.MC_POST_NEW_LEVEL, mod.onNewLevel)
-mod:AddCallback(ModCallbacks.MC_POST_NEW_ROOM, mod.onNewRoom)
+mod:AddPriorityCallback(ModCallbacks.MC_POST_NEW_ROOM, CallbackPriority.LATE, mod.onNewRoom)
 mod:AddCallback(ModCallbacks.MC_POST_UPDATE, mod.onUpdate)
 mod:AddCallback(ModCallbacks.MC_USE_CARD, mod.onUseCard, Card.CARD_HOLY)
 mod:AddCallback(ModCallbacks.MC_PRE_SPAWN_CLEAN_AWARD, mod.onPreSpawnAward)
